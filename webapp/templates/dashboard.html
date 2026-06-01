@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block header %}
+<div class="hero">
+  <div>
+    <h1>Supplier Dashboard</h1>
+    <p class="muted">Run scrapers, watch sync health, and manage supplier onboarding from one clean operations cockpit inspired by the YourBarMate product language.</p>
+  </div>
+  <div class="actions">
+    <a class="button-link secondary" href="/suppliers/new">Add Supplier</a>
+    <a class="button-link ghost" href="/system">View System Health</a>
+  </div>
+</div>
+{% endblock %}
+{% block content %}
+<div class="card" style="margin-bottom:16px;">
+  <div class="subgrid">
+    <div class="metric"><span class="muted tiny">Configured suppliers</span><strong>{{ suppliers|length }}</strong></div>
+    <div class="metric"><span class="muted tiny">Adapters available in code</span><strong>{{ available_adapters|length }}</strong></div>
+    <div class="metric"><span class="muted tiny">Secrets configured</span><strong>{{ suppliers | selectattr('secret_present') | list | length }}</strong></div>
+    <div class="metric"><span class="muted tiny">Suppliers needing setup</span><strong>{{ suppliers | rejectattr('secret_present') | list | length }}</strong></div>
+  </div>
+</div>
+<div class="grid cols-2">
+  {% for supplier in suppliers %}
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;gap:12px;">
+      <div>
+        <h2 style="margin:0 0 6px 0;"><a href="/suppliers/{{ supplier.supplier_slug }}">{{ supplier.supplier_slug }}</a></h2>
+        <div class="muted">{{ supplier.adapter }} • {{ supplier.base_url }}</div>
+      </div>
+      <div class="pill {{ 'ok' if supplier.enabled else 'warn' }}">{{ "enabled" if supplier.enabled else "disabled" }}</div>
+    </div>
+    <p style="margin:14px 0 6px;"><span class="pill {{ 'ok' if supplier.onboarding.live else ('warn' if supplier.onboarding.stage != 'Config only' else 'bad') }}">{{ supplier.onboarding.stage }}</span></p>
+    <div style="margin:14px 0 4px; color:#243041; font-weight:700;">{{ supplier.next_run_display }}</div>
+    <div class="subgrid" style="margin:14px 0;">
+      <div class="metric"><span class="muted tiny">Products</span><strong>{{ supplier.product_count }}</strong></div>
+      <div class="metric"><span class="muted tiny">Validation</span><strong>{{ supplier.validation_error_count }}</strong><span class="muted tiny">errors, {{ supplier.validation_warning_count }} warnings</span></div>
+    </div>
+    <p class="{{ 'status-ok' if supplier.secret_present else 'status-bad' }}">API connection: {{ "configured" if supplier.secret_present else "missing secret" }}</p>
+    <p class="{{ 'status-ok' if supplier.adapter_available else 'status-warn' }}">Adapter: {{ "implemented" if supplier.adapter_available else "config only" }}</p>
+    <p>Last sync: created {{ supplier.last_sync_summary.get('created_products', 0) }}, updated {{ supplier.last_sync_summary.get('updated_products', 0) }}, unchanged {{ supplier.last_sync_summary.get('unchanged_products', 0) }}</p>
+    <p>Latest job: <span class="pill">{{ supplier.latest_job.status if supplier.latest_job else "none" }}</span></p>
+    <div class="actions">
+      <button onclick="queueJob('{{ supplier.supplier_slug }}','dry-run')">Dry Run</button>
+      <button onclick="queueJob('{{ supplier.supplier_slug }}','run-sync')">Run Scrape + Sync</button>
+      <button class="secondary" onclick="queueJob('{{ supplier.supplier_slug }}','sync-from-export')">Sync Latest Export</button>
+      <a class="button-link ghost" href="/suppliers/{{ supplier.supplier_slug }}/edit">Edit Config</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+<script>
+async function queueJob(slug, action) {
+  const response = await fetch(`/api/suppliers/${slug}/jobs/${action}`, {method: 'POST'});
+  const payload = await response.json();
+  if (!response.ok) { alert(payload.detail || 'Failed to queue job'); return; }
+  window.location.href = `/jobs/${payload.job_id}`;
+}
+</script>
+{% endblock %}

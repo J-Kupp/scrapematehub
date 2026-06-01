@@ -1,0 +1,19 @@
+[Unit]
+Description=YourBarMate Supplier Control Panel
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/yourbarmate-suppliers/app
+EnvironmentFile=/etc/yourbarmate-suppliers.env
+ExecStart=/opt/yourbarmate-suppliers/venv/bin/python scraper.py run-control-panel --config /opt/yourbarmate-suppliers/app/deploy/aws/control_panel.production.json
+Restart=always
+RestartSec=5
+StandardOutput=append:/var/log/yourbarmate-suppliers/control-panel.stdout.log
+StandardError=append:/var/log/yourbarmate-suppliers/control-panel.stderr.log
+
+[Install]
+WantedBy=multi-user.target

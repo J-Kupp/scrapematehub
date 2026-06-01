@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block header %}
+<div class="hero">
+  <div>
+    <h1>Connections & Onboarding</h1>
+    <p class="muted">Track which suppliers are only configured, which ones still need code or secrets, and which are fully live for scheduled syncs.</p>
+  </div>
+  <div class="actions">
+    <a class="button-link secondary" href="/suppliers/new">Add Supplier</a>
+    <a class="button-link ghost" href="/system">System Health</a>
+  </div>
+</div>
+{% endblock %}
+{% block content %}
+<div class="card" style="margin-bottom:16px;">
+  <div class="subgrid">
+    <div class="metric"><span class="muted tiny">Configured suppliers</span><strong>{{ suppliers|length }}</strong></div>
+    <div class="metric"><span class="muted tiny">Live suppliers</span><strong>{{ suppliers | selectattr('onboarding.live') | list | length }}</strong></div>
+    <div class="metric"><span class="muted tiny">Missing secrets</span><strong>{{ suppliers | rejectattr('secret_present') | list | length }}</strong></div>
+    <div class="metric"><span class="muted tiny">Code pending</span><strong>{{ suppliers | rejectattr('structure.scraper_exists') | list | length }}</strong></div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="section-title">
+    <h3>Supplier Readiness</h3>
+    <span class="muted tiny">Each supplier should move from config to code, tests, validation, and first sync.</span>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Supplier</th>
+        <th>Stage</th>
+        <th>Adapter</th>
+        <th>Transformer</th>
+        <th>Fixtures / Tests</th>
+        <th>Secret</th>
+        <th>Schedule</th>
+        <th>Dry Run</th>
+        <th>Validation</th>
+        <th>First Sync</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for supplier in suppliers %}
+      <tr>
+        <td>
+          <strong><a href="/suppliers/{{ supplier.supplier_slug }}">{{ supplier.supplier_slug }}</a></strong><br />
+          <span class="muted tiny">{{ supplier.base_url }}</span>
+        </td>
+        <td><span class="pill {{ 'ok' if supplier.onboarding.live else ('warn' if supplier.onboarding.stage != 'Config only' else 'bad') }}">{{ supplier.onboarding.stage }}</span></td>
+        <td><span class="pill {{ 'ok' if supplier.structure.scraper_exists else 'bad' }}">{{ 'ready' if supplier.structure.scraper_exists else 'missing' }}</span></td>
+        <td><span class="pill {{ 'ok' if supplier.structure.transformer_exists else 'bad' }}">{{ 'ready' if supplier.structure.transformer_exists else 'missing' }}</span></td>
+        <td><span class="pill {{ 'ok' if supplier.structure.fixtures_present and supplier.structure.tests_present else 'warn' }}">{{ 'ready' if supplier.structure.fixtures_present and supplier.structure.tests_present else 'pending' }}</span></td>
+        <td><span class="pill {{ 'ok' if supplier.secret_present else 'bad' }}">{{ 'present' if supplier.secret_present else 'missing' }}</span></td>
+        <td>{{ supplier.next_run_display }}</td>
+        <td><span class="pill {{ 'ok' if supplier.onboarding.dry_run_seen else 'warn' }}">{{ 'seen' if supplier.onboarding.dry_run_seen else 'pending' }}</span></td>
+        <td><span class="pill {{ 'ok' if supplier.onboarding.validation_passed else 'warn' }}">{{ 'passed' if supplier.onboarding.validation_passed else 'pending' }}</span></td>
+        <td><span class="pill {{ 'ok' if supplier.onboarding.first_sync_passed else 'warn' }}">{{ 'passed' if supplier.onboarding.first_sync_passed else 'pending' }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="grid cols-2" style="margin-top:16px;">
+  {% for supplier in suppliers %}
+  <div class="card">
+    <div class="section-title">
+      <h3>{{ supplier.supplier_slug }}</h3>
+      <span class="pill">{{ supplier.adapter }}</span>
+    </div>
+    <p class="muted tiny" style="margin-top:0;">Expected repo locations for this supplier.</p>
+    <table>
+      <tr><td>Scraper</td><td><span class="muted tiny">{{ supplier.structure.scraper_path }}</span></td></tr>
+      <tr><td>Transformer</td><td><span class="muted tiny">{{ supplier.structure.transformer_path }}</span></td></tr>
+      <tr><td>Fixtures</td><td><span class="muted tiny">{{ supplier.structure.fixtures_path }}</span></td></tr>
+      <tr><td>Tests</td><td><span class="muted tiny">{{ supplier.structure.tests_path }}</span></td></tr>
+      <tr><td>Token env var</td><td><span class="muted tiny">{{ supplier.token_env_var }}</span></td></tr>
+    </table>
+    <div class="actions">
+      <a class="button-link ghost" href="/suppliers/{{ supplier.supplier_slug }}">View Supplier</a>
+      <a class="button-link secondary" href="/suppliers/{{ supplier.supplier_slug }}/edit">Edit Config</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

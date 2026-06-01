@@ -1,0 +1,23 @@
+{
+  "suppliers": [
+    {
+      "supplier_slug": "swissbox",
+      "enabled": true,
+      "scraper_adapter": "swissbox",
+      "base_url": "https://www.swissbox-ag.ch",
+      "ybm_token_env_var": "YBM_TOKEN_SWISSBOX",
+      "output_dir": "output/swissbox",
+      "schedule": {
+        "frequency": "weekly",
+        "weekday": "monday",
+        "time": "03:30"
+      },
+      "ybm_api_base": "https://connect.yourbarmate.com/api",
+      "scrape_settings": {
+        "concurrency": 2,
+        "min_delay_seconds": 0.15,
+        "max_delay_seconds": 0.45
+      }
+    }
+  ]
+}

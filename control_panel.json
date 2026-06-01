@@ -1,0 +1,20 @@
+{
+  "host": "127.0.0.1",
+  "port": 8765,
+  "db_path": "state/control_panel/control_panel.db",
+  "session_secret_env_var": "CONTROL_PANEL_SESSION_SECRET",
+  "env_file": ".env.local",
+  "scheduler_enabled": true,
+  "scheduler_mode": "internal",
+  "allowed_artifact_roots": [
+    "output",
+    "logs",
+    "state"
+  ],
+  "bootstrap_users": [
+    {
+      "username": "admin",
+      "password_env_var": "CONTROL_PANEL_ADMIN_PASSWORD"
+    }
+  ]
+}

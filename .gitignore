@@ -1,0 +1,13 @@
+.env.local
+*.pem
+.cache/
+.playwright-browsers/
+__pycache__/
+*.pyc
+logs/
+output/
+state/
+raw_html/
+raw_json/
+tmp_inspect/
+.DS_Store

@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block header %}
+<div class="hero">
+  <div>
+    <h1>System Health</h1>
+    <p class="muted">Runtime configuration, scheduler state, filesystem health, and deployment readiness in the same visual language as the main supplier cockpit.</p>
+  </div>
+</div>
+{% endblock %}
+{% block content %}
+<div class="card" style="margin-bottom:16px;">
+  <div class="subgrid">
+    <div class="metric"><span class="muted tiny">Configured suppliers</span><strong>{{ supplier_count }}</strong></div>
+    <div class="metric"><span class="muted tiny">Scheduler</span><strong>{{ "On" if health.scheduler_enabled else "Off" }}</strong><span class="muted tiny">{{ health.scheduler_mode }}</span></div>
+    <div class="metric"><span class="muted tiny">Adapters in code</span><strong>{{ health.available_adapters|length }}</strong></div>
+  </div>
+</div>
+<div class="grid cols-2">
+  <div class="card">
+    <h3>Runtime</h3>
+    <p>Scheduler enabled: <strong>{{ health.scheduler_enabled }}</strong></p>
+    <p>Scheduler mode: <strong>{{ health.scheduler_mode }}</strong></p>
+    <p>Execution backend: <strong>{{ health.job_backend }}</strong></p>
+    <p>Database: <span class="muted">{{ health.db_path }}</span></p>
+    <p>Env file: <span class="muted">{{ health.env_file }}</span></p>
+    <p>Shared secrets backend: <span class="muted">{{ health.shared_secrets_backend or "disabled" }}</span></p>
+    <p>Secrets manager ID: <span class="muted">{{ health.shared_secrets_secret_id or "n/a" }}</span></p>
+  </div>
+  <div class="card">
+    <h3>Artifact Roots</h3>
+    <table>
+      {% for root, writable in health.artifact_roots_writable.items() %}
+      <tr><td>{{ root }}</td><td>{{ writable }}</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+</div>
+<div class="card" style="margin-top:16px;">
+  <h3>ECS Worker Backend</h3>
+  <p>Region: <span class="muted">{{ health.ecs_backend.region or "not configured" }}</span></p>
+  <p>Cluster: <span class="muted">{{ health.ecs_backend.cluster or "not configured" }}</span></p>
+  <p>Task definition: <span class="muted">{{ health.ecs_backend.task_definition or "not configured" }}</span></p>
+  <p>Container name: <span class="muted">{{ health.ecs_backend.container_name or "not configured" }}</span></p>
+  <p>Artifact bucket: <span class="muted">{{ health.ecs_backend.artifact_bucket or "not configured" }}</span></p>
+</div>
+<div class="card" style="margin-top:16px;">
+  <h3>Available Adapters</h3>
+  <p class="muted">{{ health.available_adapters | join(", ") }}</p>
+</div>
+<div class="card" style="margin-top:16px;">
+  <h3>Service Log Tail</h3>
+  <pre>{{ health.service_log_tail }}</pre>
+</div>
+{% endblock %}

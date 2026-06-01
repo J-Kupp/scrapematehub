@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block header %}
+<div class="hero">
+  <div>
+    <h1>Settings</h1>
+    <p class="muted">Manage control-panel access and keep the admin account secure with the same clean operational tone as the main YourBarMate experience.</p>
+  </div>
+</div>
+{% endblock %}
+{% block content %}
+<div class="grid cols-2">
+  <div class="card">
+    <h3>Change Password</h3>
+    {% if notice %}<p class="notice">{{ notice }}</p>{% endif %}
+    {% if error %}<p class="error">{{ error }}</p>{% endif %}
+    <form method="post" action="/settings/password">
+      <label>Current password <input type="password" name="current_password" required /></label>
+      <label>New password <input type="password" name="new_password" required minlength="12" /></label>
+      <label>Confirm new password <input type="password" name="confirm_password" required minlength="12" /></label>
+      <button type="submit">Update Password</button>
+    </form>
+  </div>
+  <div class="card">
+    <h3>Security Notes</h3>
+    <p>Right now the AWS panel is running on a temporary public IP over HTTP.</p>
+    <p>Once you attach a real domain, we should re-enable HTTPS-only cookies and switch Caddy to automatic TLS.</p>
+    <p>The admin password now lives in the app database after the first bootstrap, so future password changes happen here instead of only through environment variables.</p>
+  </div>
+</div>
+{% endblock %}

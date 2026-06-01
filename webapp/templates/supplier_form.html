@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block header %}
+<div class="hero">
+  <div>
+    <h1>{{ title }}</h1>
+    <p class="muted">Define scraper, schedule, and API connection metadata for a supplier using a setup flow that feels closer to the YourBarMate product style.</p>
+  </div>
+</div>
+{% endblock %}
+{% block content %}
+{% if notice %}<p class="notice">{{ notice }}</p>{% endif %}
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+{% set schedule = supplier.schedule if supplier else {} %}
+{% set scrape = supplier.scrape_settings if supplier else {} %}
+<div class="card">
+  <form method="post" action="{{ '/suppliers/new' if form_mode == 'create' else '/suppliers/' ~ supplier.supplier_slug ~ '/edit' }}">
+    <div class="grid cols-2">
+      <label>Supplier slug
+        <input type="text" name="supplier_slug" required value="{{ supplier.supplier_slug if supplier else '' }}" {% if form_mode == 'edit' %}readonly{% endif %} />
+      </label>
+      <label>Enabled
+        <select name="enabled">
+          <option value="on" {% if supplier and supplier.enabled %}selected{% endif %}>Yes</option>
+          <option value="" {% if supplier and not supplier.enabled %}selected{% endif %}>No</option>
+        </select>
+      </label>
+      <label>Scraper adapter
+        <input list="adapter-options" name="scraper_adapter" required value="{{ supplier.adapter if supplier else '' }}" />
+      </label>
+      <label>Base URL
+        <input type="url" name="base_url" required value="{{ supplier.base_url if supplier else '' }}" />
+      </label>
+      <label>YourBarMate token env var
+        <input type="text" name="ybm_token_env_var" required value="{{ supplier.token_env_var if supplier else '' }}" />
+      </label>
+      <label>YourBarMate API base
+        <input type="url" name="ybm_api_base" value="{{ supplier.ybm_api_base if supplier else 'https://connect.yourbarmate.com/api' }}" />
+      </label>
+      <label>Output directory
+        <input type="text" name="output_dir" required value="{{ supplier.output_dir if supplier else 'output/' }}" />
+      </label>
+      <label>Schedule enabled
+        <select name="schedule_enabled">
+          <option value="on" {% if schedule.get('frequency', 'weekly') != 'disabled' %}selected{% endif %}>Yes</option>
+          <option value="" {% if schedule.get('frequency') == 'disabled' %}selected{% endif %}>No</option>
+        </select>
+      </label>
+      <label>Schedule frequency
+        <select name="schedule_frequency">
+          <option value="weekly" {% if schedule.get('frequency', 'weekly') == 'weekly' %}selected{% endif %}>Weekly</option>
+        </select>
+      </label>
+      <label>Weekday
+        <select name="schedule_weekday">
+          {% for day in ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'] %}
+          <option value="{{ day }}" {% if schedule.get('weekday', 'monday') == day %}selected{% endif %}>{{ day.capitalize() }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Time
+        <input type="time" name="schedule_time" value="{{ schedule.get('time', '03:30') }}" />
+      </label>
+      <label>Concurrency
+        <input type="number" min="1" name="concurrency" value="{{ scrape.get('concurrency', '') }}" />
+      </label>
+      <label>Min delay seconds
+        <input type="number" min="0" step="0.01" name="min_delay_seconds" value="{{ scrape.get('min_delay_seconds', '') }}" />
+      </label>
+      <label>Max delay seconds
+        <input type="number" min="0" step="0.01" name="max_delay_seconds" value="{{ scrape.get('max_delay_seconds', '') }}" />
+      </label>
+    </div>
+    <div class="actions">
+      <button type="submit">{{ 'Create Supplier' if form_mode == 'create' else 'Save Changes' }}</button>
+      {% if supplier %}
+      <a class="button-link ghost" href="/suppliers/{{ supplier.supplier_slug }}">Back to Supplier</a>
+      {% else %}
+      <a class="button-link ghost" href="/">Back to Dashboard</a>
+      {% endif %}
+    </div>
+  </form>
+  <datalist id="adapter-options">
+    {% for adapter in available_adapters %}
+    <option value="{{ adapter }}"></option>
+    {% endfor %}
+  </datalist>
+</div>
+<div class="card" style="margin-top:16px;">
+  <h3>Setup Guidance</h3>
+  <p>Creating a supplier here adds the configuration entry and schedule, but jobs will only run successfully if the named scraper adapter already exists in the codebase and the referenced token environment variable is present on the server.</p>
+  <p>That makes this page useful both for fully implemented suppliers and for staging future supplier integrations before the scraper code itself is added.</p>
+</div>
+{% endblock %}

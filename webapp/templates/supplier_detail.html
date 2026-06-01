@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block header %}
+<div class="hero">
+  <div>
+    <h1>{{ supplier.supplier_slug }}</h1>
+    <p class="muted">{{ supplier.adapter }} • {{ supplier.base_url }} • Supplier detail and operational overview</p>
+  </div>
+  <div class="actions">
+    <a class="button-link ghost" href="/suppliers/{{ supplier.supplier_slug }}/edit">Edit Supplier</a>
+  </div>
+</div>
+{% endblock %}
+{% block content %}
+{% if notice %}<p class="notice">{{ notice }}</p>{% endif %}
+<div class="grid cols-2">
+  <div class="card">
+    <div class="section-title"><h3>Summary</h3><span class="pill {{ 'ok' if summary.secret_present else 'warn' }}">{{ 'API ready' if summary.secret_present else 'Needs token' }}</span></div>
+    <p style="margin:0 0 14px;"><span class="pill {{ 'ok' if summary.onboarding.live else ('warn' if summary.onboarding.stage != 'Config only' else 'bad') }}">{{ summary.onboarding.stage }}</span></p>
+    <div class="subgrid">
+      <div class="metric"><span class="muted tiny">Enabled</span><strong>{{ "Yes" if summary.enabled else "No" }}</strong></div>
+      <div class="metric"><span class="muted tiny">Products</span><strong>{{ summary.product_count }}</strong></div>
+      <div class="metric"><span class="muted tiny">Validation</span><strong>{{ summary.validation_error_count }}</strong><span class="muted tiny">errors, {{ summary.validation_warning_count }} warnings</span></div>
+      <div class="metric"><span class="muted tiny">Schedule</span><strong style="font-size:16px;">{{ summary.next_run_display }}</strong></div>
+    </div>
+    <p>Secret: <strong>{{ "configured" if summary.secret_present else "missing" }}</strong> ({{ summary.token_env_var }})</p>
+    <p>Adapter status: <strong>{{ "implemented" if supplier.adapter_available else "config only" }}</strong></p>
+    <p>Last successful run: <span class="muted">{{ summary.last_successful_run_at or "n/a" }}</span></p>
+    <div class="actions">
+      <button onclick="queueJob('{{ supplier.supplier_slug }}','dry-run')">Dry Run</button>
+      <button onclick="queueJob('{{ supplier.supplier_slug }}','run-sync')">Run Scrape + Sync</button>
+      <button class="secondary" onclick="queueJob('{{ supplier.supplier_slug }}','sync-from-export')">Sync Latest Export</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="section-title"><h3>Connection & Paths</h3></div>
+    <p>YourBarMate API: <span class="muted">{{ supplier.ybm_api_base }}</span></p>
+    <p>Output dir: <span class="muted">{{ supplier.output_dir }}</span></p>
+    <p>Scrape settings: <span class="muted">{{ supplier.scrape_settings or {} }}</span></p>
+    <p>Scraper path: <span class="muted">{{ supplier.structure.scraper_path }}</span></p>
+    <p>Transformer path: <span class="muted">{{ supplier.structure.transformer_path }}</span></p>
+    <p>Fixtures path: <span class="muted">{{ supplier.structure.fixtures_path }}</span></p>
+    <p>Tests path: <span class="muted">{{ supplier.structure.tests_path }}</span></p>
+  </div>
+</div>
+<div class="card" style="margin-top:16px;">
+  <div class="section-title"><h3>Onboarding Checklist</h3></div>
+  <table>
+    {% for check in summary.onboarding.checks %}
+    <tr>
+      <td>{{ check.label }}</td>
+      <td><span class="pill {{ 'ok' if check.ok else 'warn' }}">{{ "done" if check.ok else "pending" }}</span></td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+<div class="card" style="margin-top:16px;">
+  <div class="section-title"><h3>Artifacts</h3></div>
+    <table>
+      {% for key, path in summary.output_paths.items() %}
+      <tr><td>{{ key }}</td><td><a href="/artifacts?path={{ path | urlencode }}">download</a></td></tr>
+      {% endfor %}
+    </table>
+</div>
+<div class="card" style="margin-top:16px;">
+  <div class="section-title"><h3>Latest Jobs</h3></div>
+  <table>
+    <thead><tr><th>ID</th><th>Type</th><th>Status</th><th>Requested By</th><th>Requested At</th></tr></thead>
+    <tbody>
+    {% for job in jobs %}
+      <tr>
+        <td><a href="/jobs/{{ job.id }}">{{ job.id }}</a></td>
+        <td>{{ job.job_type }}</td>
+        <td>{{ job.status }}</td>
+        <td>{{ job.requested_by }}</td>
+        <td>{{ job.requested_at }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+<script>
+async function queueJob(slug, action) {
+  const response = await fetch(`/api/suppliers/${slug}/jobs/${action}`, {method: 'POST'});
+  const payload = await response.json();
+  if (!response.ok) { alert(payload.detail || 'Failed to queue job'); return; }
+  window.location.href = `/jobs/${payload.job_id}`;
+}
+</script>
+{% endblock %}

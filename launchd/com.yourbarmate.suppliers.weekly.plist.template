@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.yourbarmate.suppliers.weekly</string>
+
+    <key>WorkingDirectory</key>
+    <string>__PROJECT_ROOT__</string>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>__PROJECT_ROOT__/.venv/bin/python</string>
+      <string>__PROJECT_ROOT__/scraper.py</string>
+      <string>run-all-suppliers</string>
+      <string>--env-file</string>
+      <string>__PROJECT_ROOT__/.env.local</string>
+    </array>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+      <key>Weekday</key>
+      <integer>1</integer>
+      <key>Hour</key>
+      <integer>3</integer>
+      <key>Minute</key>
+      <integer>30</integer>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>__PROJECT_ROOT__/logs/launchd-stdout.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>__PROJECT_ROOT__/logs/launchd-stderr.log</string>
+
+    <key>RunAtLoad</key>
+    <false/>
+  </dict>
+</plist>

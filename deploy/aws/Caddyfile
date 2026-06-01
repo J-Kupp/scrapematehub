@@ -1,0 +1,22 @@
+suppliers.yourdomain.com {
+    encode zstd gzip
+
+    # Optional extra hardening for fixed office IPs or VPN egress IPs:
+    # @blocked not remote_ip 203.0.113.10/32 198.51.100.0/24
+    # respond @blocked 403
+
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "same-origin"
+    }
+
+    reverse_proxy 127.0.0.1:8765 {
+        transport http {
+            read_timeout 120s
+            write_timeout 120s
+            dial_timeout 10s
+        }
+    }
+}

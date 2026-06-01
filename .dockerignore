@@ -1,0 +1,17 @@
+.git
+.github
+.venv
+__pycache__
+*.pyc
+.DS_Store
+.cache
+.playwright-browsers
+logs
+output
+state
+raw_html
+raw_json
+tmp_inspect
+yourbarmate-suppliers-key-scraping.pem
+.env.local
+control_panel.json

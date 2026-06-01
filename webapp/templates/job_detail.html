@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block header %}
+<div class="hero">
+  <div>
+    <h1>Job #{{ job.id }}</h1>
+    <p class="muted">{{ job.supplier_slug }} • {{ job.job_type }}</p>
+  </div>
+</div>
+{% endblock %}
+{% block content %}
+<div class="grid cols-2">
+  <div class="card">
+    <h3>Metadata</h3>
+    <p>Status: <strong>{{ job.status }}</strong></p>
+    <p>Backend: <strong>{{ job.backend or "local_subprocess" }}</strong></p>
+    <p>Requested by: {{ job.requested_by }}</p>
+    <p>Requested at: {{ job.requested_at }}</p>
+    <p>Started at: {{ job.started_at or "n/a" }}</p>
+    <p>Finished at: {{ job.finished_at or "n/a" }}</p>
+    <p>Exit code: {{ job.exit_code if job.exit_code is not none else "n/a" }}</p>
+    {% if job.remote_job_id %}<p>ECS task: <span class="muted tiny">{{ job.remote_job_id }}</span></p>{% endif %}
+    {% if job.remote_status %}<p>Remote status: <strong>{{ job.remote_status }}</strong></p>{% endif %}
+    {% if job.cloudwatch_log_group %}<p>CloudWatch group: <span class="muted tiny">{{ job.cloudwatch_log_group }}</span></p>{% endif %}
+    {% if job.cloudwatch_log_stream %}<p>CloudWatch stream: <span class="muted tiny">{{ job.cloudwatch_log_stream }}</span></p>{% endif %}
+    {% if job.artifact_prefix %}<p>Artifact prefix: <span class="muted tiny">{{ job.artifact_prefix }}</span></p>{% endif %}
+    {% if job.run_summary_path %}<p><a href="/artifacts?path={{ job.run_summary_path | urlencode }}">Run summary</a></p>{% endif %}
+    {% if job.sync_report_path %}<p><a href="/artifacts?path={{ job.sync_report_path | urlencode }}">Sync report</a></p>{% endif %}
+    {% if job.log_path %}<p><a href="/artifacts?path={{ job.log_path | urlencode }}">Full job log</a></p>{% endif %}
+    {% if job.error_message %}<p class="status-bad">{{ job.error_message }}</p>{% endif %}
+  </div>
+  <div class="card">
+    <h3>Recent Logs</h3>
+    <pre id="log-tail">{{ log_tail }}</pre>
+  </div>
+</div>
+<script>
+async function poll() {
+  const jobResponse = await fetch('/api/jobs/{{ job.id }}');
+  const job = await jobResponse.json();
+  if (job.status === 'running' || job.status === 'queued') {
+    const logResponse = await fetch('/api/jobs/{{ job.id }}/logs');
+    const logs = await logResponse.json();
+    document.getElementById('log-tail').textContent = logs.logs || '';
+    setTimeout(poll, 3000);
+  }
+}
+poll();
+</script>
+{% endblock %}

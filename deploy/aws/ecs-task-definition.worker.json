@@ -1,0 +1,34 @@
+{
+  "family": "yourbarmate-scraper-worker",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "1024",
+  "memory": "2048",
+  "executionRoleArn": "arn:aws:iam::<ACCOUNT_ID>:role/yourbarmate-ecs-task-execution",
+  "taskRoleArn": "arn:aws:iam::<ACCOUNT_ID>:role/yourbarmate-ecs-task-runtime",
+  "containerDefinitions": [
+    {
+      "name": "scraper-worker",
+      "image": "<ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/yourbarmate-scraper-worker:latest",
+      "essential": true,
+      "command": ["--help"],
+      "environment": [
+        { "name": "SHARED_SECRETS_BACKEND", "value": "aws-secrets-manager" },
+        { "name": "AWS_REGION", "value": "<REGION>" },
+        { "name": "AWS_SECRETS_MANAGER_SECRET_ID", "value": "yourbarmate-scrapers-prod" },
+        { "name": "SUPPLIER_OUTPUT_ROOT", "value": "/tmp/output" },
+        { "name": "SCRAPER_STATE_ROOT", "value": "/tmp/state" },
+        { "name": "SCRAPER_LOG_ROOT", "value": "/tmp/logs" },
+        { "name": "SCRAPER_CACHE_ROOT", "value": "/tmp/cache" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/yourbarmate-scraper-worker",
+          "awslogs-region": "<REGION>",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}

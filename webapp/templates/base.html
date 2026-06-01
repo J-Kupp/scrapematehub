@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ title or "Supplier Control Panel" }}</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg:#0b1625;
+        --bg-accent:#11233b;
+        --card:#11233b;
+        --card-soft:#162c4a;
+        --ink:#e3ebf6;
+        --muted:#95aac9;
+        --accent:#306eff;
+        --accent-dark:#0a53ff;
+        --accent-soft:#162c4a;
+        --line:#162c4a;
+        --line-strong:#3b506c;
+        --ok:#36b37e;
+        --warn:#ffab00;
+        --bad:#ff5630;
+        --navy:#e3ebf6;
+        --shadow:0 18px 44px rgba(11, 22, 37, .38);
+      }
+      * { box-sizing:border-box; }
+      body {
+        margin:0;
+        font-family: Nunito, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        background:
+          radial-gradient(circle at top left, rgba(48,110,255,.18), transparent 24%),
+          radial-gradient(circle at top right, rgba(255,171,0,.08), transparent 28%),
+          linear-gradient(180deg, #0b1625 0%, #11233b 100%);
+        color:var(--ink);
+      }
+      header, main, footer { max-width: 1220px; margin: 0 auto; padding: 20px; }
+      .topbar {
+        display:flex;
+        justify-content:space-between;
+        gap:16px;
+        align-items:center;
+        color:var(--muted);
+        font-size:12px;
+        letter-spacing:.06em;
+        text-transform:uppercase;
+        padding: 10px 0 16px;
+      }
+      .topbar span { opacity:.9; }
+      nav {
+        display:flex;
+        gap:16px;
+        align-items:center;
+        justify-content:space-between;
+        margin-bottom:22px;
+        padding:16px 20px;
+        background:rgba(17,35,59,.82);
+        border:1px solid rgba(22,44,74,.98);
+        border-radius:24px;
+        backdrop-filter:blur(12px);
+        box-shadow:0 10px 30px rgba(11,22,37,.35);
+      }
+      .nav-links { display:flex; gap:12px; align-items:center; }
+      a { color:var(--ink); text-decoration:none; }
+      a:hover { color:var(--accent); }
+      .brand {
+        display:flex;
+        align-items:center;
+        gap:12px;
+        font-weight:800;
+        letter-spacing:.01em;
+        color:var(--ink);
+      }
+      .brand-mark {
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        width:38px;
+        height:38px;
+        border-radius:14px;
+        background:linear-gradient(135deg, var(--accent) 0%, #3030ff 100%);
+        color:white;
+        font-size:17px;
+        box-shadow:0 10px 18px rgba(48,110,255,.32);
+      }
+      .card {
+        background:var(--card);
+        border:1px solid var(--line);
+        border-radius:26px;
+        padding:22px;
+        box-shadow:var(--shadow);
+      }
+      .grid { display:grid; gap:16px; }
+      .grid.cols-2 { grid-template-columns: repeat(auto-fit, minmax(320px,1fr)); }
+      .grid.cols-3 { grid-template-columns: repeat(auto-fit, minmax(260px,1fr)); }
+      .muted { color:var(--muted); }
+      .pill {
+        display:inline-flex;
+        align-items:center;
+        gap:6px;
+        padding:6px 12px;
+        border-radius:999px;
+        font-size:12px;
+        font-weight:600;
+        background:#162c4a;
+        color:#95aac9;
+      }
+      .pill.ok { background:rgba(54,179,126,.14); color:#36b37e; }
+      .pill.warn { background:rgba(255,171,0,.14); color:#ffab00; }
+      .pill.bad { background:rgba(255,86,48,.14); color:#ff5630; }
+      .status-ok { color:var(--ok); }
+      .status-bad { color:var(--bad); }
+      .status-warn { color:var(--warn); }
+      .actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+      button, .button-link {
+        border:0;
+        border-radius:14px;
+        padding:11px 16px;
+        background:linear-gradient(50deg, #306eff 0, #3030ff 100%);
+        color:white;
+        cursor:pointer;
+        text-decoration:none;
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        font-weight:700;
+        box-shadow:0 10px 20px rgba(48,110,255,.25);
+      }
+      button.secondary, .button-link.secondary {
+        background:transparent;
+        border:1px solid rgba(227,235,246,.3);
+        box-shadow:none;
+      }
+      button.ghost, .button-link.ghost {
+        background:var(--accent-soft);
+        color:var(--ink);
+        border:1px solid var(--line);
+        box-shadow:none;
+      }
+      button:hover, .button-link:hover { transform:translateY(-1px); }
+      table { width:100%; border-collapse:collapse; }
+      th, td { text-align:left; padding:10px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+      pre { white-space:pre-wrap; word-break:break-word; background:#161b22; color:#e6edf3; padding:14px; border-radius:12px; overflow:auto; }
+      .hero {
+        display:flex;
+        justify-content:space-between;
+        gap:16px;
+        align-items:flex-end;
+        padding:28px 30px;
+        background:
+          linear-gradient(135deg, rgba(17,35,59,.98) 0%, rgba(11,22,37,.96) 100%);
+        border:1px solid rgba(22,44,74,.98);
+        border-radius:30px;
+        box-shadow:var(--shadow);
+      }
+      .hero h1 { margin:0 0 8px; font-size:40px; line-height:1.02; letter-spacing:-.03em; color:var(--ink); }
+      .hero p { margin:0; max-width:760px; font-size:16px; line-height:1.6; }
+      form.inline { display:inline; }
+      .error { color:var(--bad); margin-top:10px; }
+      .notice { color:var(--ok); margin-top:10px; }
+      .tiny { font-size:12px; }
+      input, select, textarea {
+        width:100%;
+        padding:11px 13px;
+        border-radius:14px;
+        border:1px solid var(--line-strong);
+        margin-top:6px;
+        background:#162c4a;
+        color:var(--ink);
+        box-sizing:border-box;
+        font:inherit;
+      }
+      label { display:block; margin-bottom:12px; }
+      .metric {
+        display:flex;
+        flex-direction:column;
+        gap:4px;
+        padding:16px;
+        border-radius:20px;
+        background:linear-gradient(180deg, #162c4a 0%, #13263f 100%);
+        border:1px solid var(--line);
+      }
+      .metric strong { font-size:24px; color:var(--ink); }
+      .subgrid { display:grid; gap:12px; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); }
+      .section-title {
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:12px;
+        margin-bottom:14px;
+      }
+      .section-title h3 { margin:0; font-size:20px; color:var(--ink); }
+      footer { padding-top: 6px; padding-bottom: 32px; color:var(--muted); font-size:13px; }
+      @media (max-width: 820px) {
+        .topbar { display:none; }
+        .hero { padding:22px; }
+        .hero h1 { font-size:32px; }
+        nav { flex-direction:column; align-items:flex-start; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="topbar">
+        <span>ScrapeMate Hub by YourBarMate</span>
+        <span>Supplier operations, syncs, and scheduling in one cockpit</span>
+      </div>
+      <nav>
+        <div class="nav-links">
+          <a class="brand" href="/">
+            <span class="brand-mark">YB</span>
+            <span>ScrapeMate Hub</span>
+          </a>
+          <a href="/">Dashboard</a>
+          <a href="/connections">Connections</a>
+          <a href="/suppliers/new">Add Supplier</a>
+          <a href="/system">System</a>
+          <a href="/settings">Settings</a>
+        </div>
+        {% if current_user %}
+        <div class="nav-links">
+          <span class="muted tiny">Signed in as {{ current_user.username }}</span>
+          <form class="inline" method="post" action="/logout">
+            <button class="secondary" type="submit">Log out</button>
+          </form>
+        </div>
+        {% endif %}
+      </nav>
+      {% block header %}{% endblock %}
+    </header>
+    <main>
+      {% block content %}{% endblock %}
+    </main>
+    <footer>
+      Internal supplier operations console. Temporary HTTP mode on raw EC2 IP until a real domain is attached.
+    </footer>
+  </body>
+</html>

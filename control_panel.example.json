@@ -1,0 +1,39 @@
+{
+  "host": "127.0.0.1",
+  "port": 8765,
+  "db_path": "state/control_panel/control_panel.db",
+  "supplier_config_path": "suppliers.json",
+  "session_secret_env_var": "CONTROL_PANEL_SESSION_SECRET",
+  "env_file": ".env.local",
+  "scheduler_enabled": true,
+  "scheduler_mode": "internal",
+  "job_backend": "local_subprocess",
+  "session_same_site": "lax",
+  "session_https_only": false,
+  "forwarded_allow_ips": "127.0.0.1",
+  "enforce_non_placeholder_secrets": false,
+  "ecs_backend": {
+    "region": "",
+    "cluster": "",
+    "task_definition": "",
+    "container_name": "",
+    "subnets": [],
+    "security_groups": [],
+    "assign_public_ip": true,
+    "launch_type": "FARGATE",
+    "platform_version": "LATEST",
+    "artifact_bucket": "",
+    "artifact_prefix": "suppliers"
+  },
+  "allowed_artifact_roots": [
+    "output",
+    "logs",
+    "state"
+  ],
+  "bootstrap_users": [
+    {
+      "username": "admin",
+      "password_env_var": "CONTROL_PANEL_ADMIN_PASSWORD"
+    }
+  ]
+}
