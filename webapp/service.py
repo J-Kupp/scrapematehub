@@ -15,6 +15,14 @@ from .config import WebAppConfig
 from .jobs import list_jobs, tail_file
 
 
+def validate_ybm_token(api_base: str, token: str) -> int:
+    """Fail fast when an operator pastes a token that cannot access YourBarMate."""
+    from ybm import YbmSyncClient
+
+    categories = YbmSyncClient(api_base, _normalize_env_value(token)).list_categories()
+    return len(categories)
+
+
 def read_json_file(path: Path) -> dict[str, Any]:
     if not path.exists():
         return {}
