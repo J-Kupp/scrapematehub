@@ -677,6 +677,12 @@ def create_app(config_path: Path | None = None) -> FastAPI:
         progress = build_job_progress(job, app_config)
         return {
             "job_id": job_id,
+            "status": job.get("status"),
+            "requested_at": job.get("requested_at"),
+            "started_at": job.get("started_at"),
+            "finished_at": job.get("finished_at"),
+            "exit_code": job.get("exit_code"),
+            "remote_status": job.get("remote_status"),
             "scraped_count": progress["scraped_count"],
             "errors": progress["errors"],
             "cloudwatch_log_group": progress["log_group"],
