@@ -421,7 +421,12 @@ def create_app(config_path: Path | None = None) -> FastAPI:
             new_configs = []
             for config in configs:
                 if config.supplier_slug == updated_supplier["supplier_slug"]:
-                    new_configs.append(build_supplier_from_form(**updated_supplier))
+                    new_configs.append(
+                        build_supplier_from_form(
+                            **updated_supplier,
+                            existing_scrape_settings=config.scrape_settings,
+                        )
+                    )
                     replaced = True
                 else:
                     new_configs.append(config)

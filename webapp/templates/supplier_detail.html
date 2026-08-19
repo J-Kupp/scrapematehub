@@ -56,8 +56,16 @@
     </div>
     <div class="data-list">
       <div class="data-row">
-        <div class="data-label">Enabled</div>
+        <div class="data-label">Supplier active</div>
         <div class="data-value"><span class="pill {{ 'ok' if summary.enabled else 'warn' }}">{{ "Yes" if summary.enabled else "No" }}</span></div>
+      </div>
+      <div class="data-row">
+        <div class="data-label">Scheduler</div>
+        <div class="data-value">
+          <span class="pill {{ 'ok' if summary.scheduler.get('last_status') in ['scheduled', 'queued'] else 'warn' }}">{{ summary.scheduler.get('last_status', 'Not registered') | replace('_', ' ') | title }}</span>
+          {% if summary.scheduler.get('last_enqueued_at') %}<span class="muted tiny">Last queued: {{ summary.scheduler.get('last_enqueued_at') }}</span>{% endif %}
+          {% if summary.scheduler.get('last_error') %}<div class="status-warn tiny" style="margin-top:6px;">{{ summary.scheduler.get('last_error') }}</div>{% endif %}
+        </div>
       </div>
       <div class="data-row">
         <div class="data-label">Secret</div>

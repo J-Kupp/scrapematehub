@@ -26,12 +26,15 @@
       <label>Supplier slug
         <input type="text" name="supplier_slug" required value="{{ supplier.supplier_slug if supplier else '' }}" {% if form_mode == 'edit' %}readonly{% endif %} />
       </label>
-      <label>Enabled
+      <label>Supplier active
         <select name="enabled">
           <option value="on" {% if supplier and supplier.enabled %}selected{% endif %}>Yes</option>
           <option value="" {% if supplier and not supplier.enabled %}selected{% endif %}>No</option>
         </select>
       </label>
+      <p class="soft tiny" style="margin-top:-6px;">
+        Must be active before manual or scheduled jobs can run.
+      </p>
       <label>Scraper adapter
         <input list="adapter-options" name="scraper_adapter" required value="{{ supplier.adapter if supplier else '' }}" />
       </label>
@@ -89,6 +92,11 @@
           <p>Internal scheduler settings for automatic scrape and sync runs.</p>
         </div>
       </div>
+      {% if supplier and not supplier.enabled and schedule.get('frequency') != 'disabled' %}
+      <div class="error">
+        This schedule is blocked because the supplier is inactive. Set <strong>Supplier active</strong> to Yes and save.
+      </div>
+      {% endif %}
       <label>Schedule enabled
         <select name="schedule_enabled">
           <option value="on" {% if schedule.get('frequency', 'weekly') != 'disabled' %}selected{% endif %}>Yes</option>

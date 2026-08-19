@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict
 from datetime import datetime, timezone
 import json
+import logging
 import os
 from pathlib import Path
 import sqlite3
@@ -25,6 +26,7 @@ JOB_STATUS_RUNNING = "running"
 JOB_STATUS_SUCCEEDED = "succeeded"
 JOB_STATUS_FAILED = "failed"
 JOB_STATUS_STOPPED = "stopped"
+logger = logging.getLogger(__name__)
 
 
 def utc_now() -> str:
@@ -246,30 +248,55 @@ class JobRunner:
         if not enabled or mode != "internal":
             return
         scheduler = BackgroundScheduler(timezone="Europe/Zurich")
+        self.scheduler = scheduler
+        scheduler.start()
         for supplier in load_supplier_configs(self.supplier_config_path):
             if not supplier.enabled:
+                self._record_scheduler_state(
+                    supplier.supplier_slug,
+                    status="blocked",
+                    error="Supplier is disabled.",
+                )
                 continue
             schedule = supplier.schedule or {}
             if schedule.get("frequency") != "weekly":
+                self._record_scheduler_state(
+                    supplier.supplier_slug,
+                    status="disabled",
+                    error="Schedule is disabled or unsupported.",
+                )
                 continue
-            weekday = schedule.get("weekday", "monday")
-            hour, minute = (schedule.get("time", "03:30").split(":", 1) + ["0"])[:2]
-            scheduler.add_job(
-                self._enqueue_scheduled_job,
-                "cron",
-                day_of_week=weekday[:3],
-                hour=int(hour),
-                minute=int(minute),
-                args=[supplier.supplier_slug],
-                id=f"supplier-{supplier.supplier_slug}",
-                replace_existing=True,
-            )
-        scheduler.start()
-        self.scheduler = scheduler
+            try:
+                weekday = schedule.get("weekday", "monday")
+                hour, minute = (schedule.get("time", "03:30").split(":", 1) + ["0"])[:2]
+                job = scheduler.add_job(
+                    self._enqueue_scheduled_job,
+                    "cron",
+                    day_of_week=weekday[:3],
+                    hour=int(hour),
+                    minute=int(minute),
+                    args=[supplier.supplier_slug],
+                    id=f"supplier-{supplier.supplier_slug}",
+                    replace_existing=True,
+                )
+                next_run_at = job.next_run_time.isoformat() if job.next_run_time else ""
+                self._record_scheduler_state(
+                    supplier.supplier_slug,
+                    status="scheduled",
+                    next_run_at=next_run_at,
+                )
+                logger.info("Scheduled %s for %s", supplier.supplier_slug, next_run_at)
+            except (TypeError, ValueError) as exc:
+                self._record_scheduler_state(
+                    supplier.supplier_slug,
+                    status="invalid",
+                    error=f"Invalid schedule: {exc}",
+                )
+                logger.exception("Unable to schedule supplier %s", supplier.supplier_slug)
 
     def _enqueue_scheduled_job(self, supplier_slug: str) -> None:
         try:
-            queue_job(
+            job_id = queue_job(
                 self.conn,
                 supplier_slug=supplier_slug,
                 job_type="scrape_and_sync",
@@ -281,8 +308,62 @@ class JobRunner:
                     env_file=self.env_file,
                 ),
             )
-        except ValueError:
-            return
+            self._record_scheduler_state(
+                supplier_slug,
+                status="queued",
+                next_run_at=self._next_run_at(supplier_slug),
+                enqueued=True,
+            )
+            logger.info("Scheduler queued job %s for %s", job_id, supplier_slug)
+        except ValueError as exc:
+            self._record_scheduler_state(
+                supplier_slug,
+                status="skipped",
+                next_run_at=self._next_run_at(supplier_slug),
+                error=str(exc),
+            )
+            logger.warning("Scheduler skipped %s: %s", supplier_slug, exc)
+        except Exception as exc:  # pragma: no cover - defensive production path
+            self._record_scheduler_state(
+                supplier_slug,
+                status="failed",
+                next_run_at=self._next_run_at(supplier_slug),
+                error=str(exc),
+            )
+            logger.exception("Scheduler failed to queue %s", supplier_slug)
+
+    def _next_run_at(self, supplier_slug: str) -> str:
+        job = self.scheduler.get_job(f"supplier-{supplier_slug}") if self.scheduler else None
+        return job.next_run_time.isoformat() if job and job.next_run_time else ""
+
+    def _record_scheduler_state(
+        self,
+        supplier_slug: str,
+        *,
+        status: str,
+        next_run_at: str = "",
+        error: str = "",
+        enqueued: bool = False,
+    ) -> None:
+        now = utc_now()
+        self.conn.execute(
+            """
+            INSERT INTO scheduler_runs (
+                supplier_slug, next_run_at, last_enqueued_at, last_status, last_error, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(supplier_slug) DO UPDATE SET
+                next_run_at = excluded.next_run_at,
+                last_enqueued_at = CASE
+                    WHEN excluded.last_enqueued_at != '' THEN excluded.last_enqueued_at
+                    ELSE scheduler_runs.last_enqueued_at
+                END,
+                last_status = excluded.last_status,
+                last_error = excluded.last_error,
+                updated_at = excluded.updated_at
+            """,
+            (supplier_slug, next_run_at, now if enqueued else "", status, error, now),
+        )
+        self.conn.commit()
 
     def _recover_stale_jobs(self) -> None:
         running_rows = self.conn.execute(
