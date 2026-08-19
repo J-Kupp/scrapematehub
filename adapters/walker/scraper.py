@@ -14,6 +14,7 @@ from tenacity import AsyncRetrying, retry_if_exception_type, stop_after_attempt,
 
 from adapters.base import SupplierAdapter
 from adapters.walker.transform import (
+    extract_category_links,
     extract_manufacturer_link,
     extract_next_listing_url,
     extract_product_links,
@@ -114,6 +115,9 @@ class WalkerAdapter(SupplierAdapter):
         self.max_pages = int(config.scrape_settings.get("max_pages", 0) or 0)
         self.max_products = int(config.scrape_settings.get("max_products", 0) or 0)
         self.fetch_external_pages = bool(config.scrape_settings.get("fetch_external_pages", True))
+        self.discover_by_categories = bool(
+            config.scrape_settings.get("discover_by_categories", True)
+        )
 
     def setup_logger(self) -> logging.Logger:
         self.log_dir.mkdir(parents=True, exist_ok=True)
@@ -204,6 +208,34 @@ class WalkerAdapter(SupplierAdapter):
         seen_pages: set[str] = set()
         product_urls: set[str] = set()
 
+        # Walker advertises 1'001 products, but its ungrouped listing starts
+        # repeating entries after roughly half the catalogue. Its category tree
+        # exposes the complete public assortment and provides stable paging.
+        if self.discover_by_categories:
+            try:
+                initial_html = await fetcher.fetch_text(
+                    self.listing_url,
+                    force_refresh=force_refresh,
+                )
+                category_urls = [
+                    url
+                    for url in extract_category_links(initial_html, self.base_url)
+                    if url.rstrip("/") != self.listing_url.rstrip("/")
+                ]
+                to_visit = category_urls or to_visit
+                fetcher.logger.info(
+                    "Walker category discovery found %s category listing URLs",
+                    len(category_urls),
+                )
+            except Exception as exc:
+                failures.append(
+                    {
+                        "stage": "category_discovery",
+                        "url": self.listing_url,
+                        "reason": str(exc),
+                    }
+                )
+
         while to_visit:
             if self.max_pages and len(seen_pages) >= self.max_pages:
                 break
@@ -228,6 +260,7 @@ class WalkerAdapter(SupplierAdapter):
                 {
                     "page_url": page_url,
                     "page_index": str(len(seen_pages)),
+                    "category_root": page_url.split("?", 1)[0],
                     "product_url_count": str(len(found_urls)),
                     "cumulative_product_url_count": str(len(product_urls)),
                 }
