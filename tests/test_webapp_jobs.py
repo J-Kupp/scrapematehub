@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from models import SupplierConfig
 from webapp.config import EcsBackendConfig
 from webapp.db import connect, init_db
 from webapp.jobs import (
@@ -227,6 +228,48 @@ class WebAppJobTests(unittest.TestCase):
         self.assertEqual(runner._job_runtime_backend("scrape_only"), "local_subprocess")
         self.assertEqual(runner._job_runtime_backend("sync_from_export"), "local_subprocess")
         self.assertEqual(runner._job_runtime_backend("scrape_and_sync"), "ecs_fargate")
+
+    def test_scheduler_records_blocked_supplier_instead_of_silently_ignoring_it(self) -> None:
+        supplier = SupplierConfig(
+            supplier_slug="walker",
+            enabled=False,
+            scraper_adapter="walker",
+            base_url="https://example.com",
+            ybm_token_env_var="YBM_TOKEN_WALKER",
+            output_dir="output/walker",
+            schedule={"frequency": "weekly", "weekday": "wednesday", "time": "17:39"},
+        )
+        runner = JobRunner(self.conn, env_file=None)
+        with patch("webapp.jobs.load_supplier_configs", return_value=[supplier]):
+            runner.start_scheduler(enabled=True, mode="internal")
+        row = self.conn.execute(
+            "SELECT last_status, last_error FROM scheduler_runs WHERE supplier_slug = ?",
+            ("walker",),
+        ).fetchone()
+        runner.stop()
+        self.assertEqual(row["last_status"], "blocked")
+        self.assertEqual(row["last_error"], "Supplier is disabled.")
+
+    def test_scheduler_records_next_run_for_active_supplier(self) -> None:
+        supplier = SupplierConfig(
+            supplier_slug="walker",
+            enabled=True,
+            scraper_adapter="walker",
+            base_url="https://example.com",
+            ybm_token_env_var="YBM_TOKEN_WALKER",
+            output_dir="output/walker",
+            schedule={"frequency": "weekly", "weekday": "wednesday", "time": "17:39"},
+        )
+        runner = JobRunner(self.conn, env_file=None)
+        with patch("webapp.jobs.load_supplier_configs", return_value=[supplier]):
+            runner.start_scheduler(enabled=True, mode="internal")
+        row = self.conn.execute(
+            "SELECT next_run_at, last_status FROM scheduler_runs WHERE supplier_slug = ?",
+            ("walker",),
+        ).fetchone()
+        runner.stop()
+        self.assertEqual(row["last_status"], "scheduled")
+        self.assertTrue(row["next_run_at"])
 
     def test_ecs_job_runtime_error_marks_job_failed(self) -> None:
         job_id = queue_job(

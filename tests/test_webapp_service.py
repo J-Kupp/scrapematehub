@@ -14,6 +14,7 @@ from webapp.config import BootstrapUser, EcsBackendConfig, WebAppConfig
 from webapp.db import connect, init_db
 from webapp.jobs import queue_job
 from webapp.service import (
+    build_supplier_from_form,
     onboarding_status,
     resolve_allowed_artifact,
     save_dashboard_secret,
@@ -118,6 +119,29 @@ class WebAppServiceTests(unittest.TestCase):
         self.assertEqual(summary["catalog_update_policy"], "delete_missing")
         self.assertEqual(summary["last_run_status"], "ok")
         self.assertEqual(summary["latest_job"]["job_type"], "scrape_dry_run")
+
+    def test_supplier_form_keeps_adapter_settings_not_exposed_in_the_ui(self) -> None:
+        supplier = build_supplier_from_form(
+            supplier_slug="walker",
+            enabled=True,
+            scraper_adapter="walker",
+            base_url="https://shop.walker.swiss",
+            ybm_token_env_var="YBM_TOKEN_WALKER",
+            output_dir="output/walker",
+            catalog_update_policy="keep_existing",
+            ybm_api_base="https://connect.yourbarmate.com/api",
+            schedule_enabled=True,
+            schedule_frequency="weekly",
+            schedule_weekday="wednesday",
+            schedule_time="17:39",
+            concurrency="4",
+            min_delay_seconds="0.1",
+            max_delay_seconds="0.3",
+            existing_scrape_settings={"discover_by_categories": True, "fetch_external_pages": True},
+        )
+        self.assertTrue(supplier.scrape_settings["discover_by_categories"])
+        self.assertTrue(supplier.scrape_settings["fetch_external_pages"])
+        self.assertEqual(supplier.scrape_settings["concurrency"], 4)
 
     def test_resolve_allowed_artifact_allows_known_roots_only(self) -> None:
         app_config = WebAppConfig(

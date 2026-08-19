@@ -54,6 +54,9 @@ def init_db(conn: sqlite3.Connection) -> None:
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             supplier_slug TEXT NOT NULL UNIQUE,
             next_run_at TEXT,
+            last_enqueued_at TEXT,
+            last_status TEXT,
+            last_error TEXT,
             updated_at TEXT NOT NULL
         );
 
@@ -80,6 +83,18 @@ def init_db(conn: sqlite3.Connection) -> None:
     }
     for name, statement in migration_columns.items():
         if name not in columns:
+            conn.execute(statement)
+    scheduler_columns = {
+        row["name"]
+        for row in conn.execute("PRAGMA table_info(scheduler_runs)").fetchall()
+    }
+    scheduler_migrations = {
+        "last_enqueued_at": "ALTER TABLE scheduler_runs ADD COLUMN last_enqueued_at TEXT",
+        "last_status": "ALTER TABLE scheduler_runs ADD COLUMN last_status TEXT",
+        "last_error": "ALTER TABLE scheduler_runs ADD COLUMN last_error TEXT",
+    }
+    for name, statement in scheduler_migrations.items():
+        if name not in scheduler_columns:
             conn.execute(statement)
     conn.commit()
 

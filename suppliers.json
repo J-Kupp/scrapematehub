@@ -22,7 +22,7 @@
     },
     {
       "supplier_slug": "gourmador",
-      "enabled": false,
+      "enabled": true,
       "scraper_adapter": "gourmador",
       "base_url": "https://shop.gourmadorzollikofen.ch",
       "ybm_api_base": "https://connect.yourbarmate.com/api",
@@ -51,7 +51,9 @@
       "output_dir": "output/walker",
       "catalog_update_policy": "keep_existing",
       "schedule": {
-        "frequency": "disabled"
+        "frequency": "weekly",
+        "weekday": "wednesday",
+        "time": "17:39"
       },
       "scrape_settings": {
         "concurrency": 4,

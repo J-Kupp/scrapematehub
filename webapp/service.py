@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import datetime
 from pathlib import Path
 import sqlite3
 from typing import Any
@@ -185,6 +186,11 @@ def supplier_health_summary(
         run_summary = read_json_file(paths["run_summary"])
         sync_report = read_json_file(paths["sync_report"])
         latest_job = next(iter(list_jobs(conn, supplier_slug=supplier.supplier_slug, limit=1)), None)
+        scheduler_row = conn.execute(
+            "SELECT * FROM scheduler_runs WHERE supplier_slug = ?",
+            (supplier.supplier_slug,),
+        ).fetchone()
+        scheduler = dict(scheduler_row) if scheduler_row is not None else {}
         structure = supplier_structure_status(supplier.supplier_slug, supplier.scraper_adapter)
         onboarding = onboarding_status(
             supplier_slug=supplier.supplier_slug,
@@ -221,7 +227,8 @@ def supplier_health_summary(
                 "product_count": run_summary.get("product_count", 0),
                 "validation_warning_count": len(run_summary.get("validation", {}).get("warnings", [])),
                 "validation_error_count": len(run_summary.get("validation", {}).get("errors", [])),
-                "next_run_display": describe_schedule(supplier.schedule),
+                "next_run_display": describe_scheduler(supplier, scheduler),
+                "scheduler": scheduler,
                 "onboarding": onboarding,
                 "structure": structure,
                 "output_paths": {
@@ -331,6 +338,22 @@ def describe_schedule(schedule: dict[str, Any]) -> str:
     return json.dumps(schedule, ensure_ascii=False)
 
 
+def describe_scheduler(supplier, scheduler: dict[str, Any]) -> str:
+    schedule = supplier.schedule or {}
+    if schedule.get("frequency") == "disabled":
+        return "Disabled"
+    if not supplier.enabled:
+        return "Blocked: supplier inactive"
+    next_run_at = str(scheduler.get("next_run_at", "")).strip()
+    if next_run_at:
+        try:
+            scheduled = datetime.fromisoformat(next_run_at)
+            return f"Next: {scheduled.strftime('%a %d %b, %H:%M %Z')}"
+        except ValueError:
+            pass
+    return describe_schedule(schedule)
+
+
 def parse_bool_form(value: str | None) -> bool:
     return (value or "").strip().lower() in {"1", "true", "on", "yes"}
 
@@ -368,8 +391,9 @@ def build_supplier_from_form(
     concurrency: str,
     min_delay_seconds: str,
     max_delay_seconds: str,
+    existing_scrape_settings: dict[str, Any] | None = None,
 ):
-    scrape_settings: dict[str, Any] = {}
+    scrape_settings: dict[str, Any] = dict(existing_scrape_settings or {})
     if concurrency.strip():
         scrape_settings["concurrency"] = int(concurrency.strip())
     if min_delay_seconds.strip():
