@@ -7,6 +7,7 @@
   "env_file": "/etc/yourbarmate-suppliers.env",
   "shared_secrets_backend": "aws-secrets-manager",
   "aws_secrets_manager_secret_id": "yourbarmate-scrapers-prod",
+  "shared_secrets_region": "eu-central-1",
   "scheduler_enabled": true,
   "scheduler_mode": "internal",
   "job_backend": "local_subprocess",

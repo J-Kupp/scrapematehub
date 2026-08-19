@@ -142,7 +142,8 @@ For production dashboard token management, configure the same backend in
 ```json
 {
   "shared_secrets_backend": "aws-secrets-manager",
-  "aws_secrets_manager_secret_id": "yourbarmate-scrapers-prod"
+  "aws_secrets_manager_secret_id": "yourbarmate-scrapers-prod",
+  "shared_secrets_region": "eu-central-1"
 }
 ```
 

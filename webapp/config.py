@@ -45,6 +45,7 @@ class WebAppConfig:
     dashboard_secrets_file: str = ""
     shared_secrets_backend: str = ""
     aws_secrets_manager_secret_id: str = ""
+    shared_secrets_region: str = ""
     scheduler_enabled: bool = True
     scheduler_mode: str = "internal"
     session_same_site: str = "lax"
@@ -94,6 +95,13 @@ class WebAppConfig:
         return (
             self.aws_secrets_manager_secret_id.strip()
             or os.environ.get("AWS_SECRETS_MANAGER_SECRET_ID", "").strip()
+        )
+
+    def resolved_shared_secrets_region(self) -> str:
+        return (
+            self.shared_secrets_region.strip()
+            or os.environ.get("AWS_REGION", "").strip()
+            or os.environ.get("AWS_DEFAULT_REGION", "").strip()
         )
 
     def resolved_artifact_roots(self) -> list[Path]:
@@ -185,6 +193,9 @@ def load_webapp_config(config_path: Path | None = None) -> WebAppConfig:
                 "aws_secrets_manager_secret_id",
                 config.aws_secrets_manager_secret_id,
             ),
+            shared_secrets_region=payload.get(
+                "shared_secrets_region", config.shared_secrets_region
+            ),
             scheduler_enabled=bool(
                 payload.get("scheduler_enabled", config.scheduler_enabled)
             ),
@@ -230,8 +241,9 @@ def load_webapp_config(config_path: Path | None = None) -> WebAppConfig:
             "AWS_SECRETS_MANAGER_SECRET_ID",
             config.aws_secrets_manager_secret_id.strip(),
         )
-    if config.ecs_backend.region:
-        os.environ.setdefault("AWS_REGION", config.ecs_backend.region)
+    shared_secrets_region = config.shared_secrets_region.strip() or config.ecs_backend.region
+    if shared_secrets_region:
+        os.environ.setdefault("AWS_REGION", shared_secrets_region)
     load_env_file(config.resolved_env_path())
     secrets_path = config.resolved_dashboard_secrets_path()
     if secrets_path.exists():
