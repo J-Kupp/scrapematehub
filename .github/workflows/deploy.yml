@@ -48,4 +48,4 @@ jobs:
       - name: Run remote deploy script
         run: |
           ssh "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" \
-            "cd '${{ secrets.EC2_APP_DIR }}' && DEPLOY_SOURCE_REVISION='${{ github.sha }}' DEPLOY_SOURCE_LABEL='github-actions' bash deploy/aws/deploy-from-git.sh"
+            "cd '${{ secrets.EC2_APP_DIR }}' && bash deploy/aws/deploy-from-git.sh"
