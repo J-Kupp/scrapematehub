@@ -218,6 +218,12 @@ class WalkerAdapter(SupplierAdapter):
                 continue
             found_urls = extract_product_links(html, self.base_url)
             product_urls.update(found_urls)
+            fetcher.logger.info(
+                "Walker listing page %s discovered %s product URLs (%s total)",
+                len(seen_pages),
+                len(found_urls),
+                len(product_urls),
+            )
             listing_diagnostics.append(
                 {
                     "page_url": page_url,
@@ -242,8 +248,16 @@ class WalkerAdapter(SupplierAdapter):
     ) -> tuple[list, int, int]:
         semaphore = asyncio.Semaphore(self.detail_concurrency)
 
-        async def fetch_product(url: str):
+        total_products = len(product_urls)
+
+        async def fetch_product(index: int, url: str):
             async with semaphore:
+                fetcher.logger.info(
+                    "Walker fetch start %s/%s %s",
+                    index,
+                    total_products,
+                    url,
+                )
                 html = await fetcher.fetch_text(url, force_refresh=force_refresh)
                 external_url = extract_manufacturer_link(html, self.base_url)
                 external_html = None
@@ -258,9 +272,25 @@ class WalkerAdapter(SupplierAdapter):
                     external_html=external_html,
                     external_url=external_url or None,
                 )
+                if product is None:
+                    fetcher.logger.warning(
+                        "Walker parse failed %s/%s %s",
+                        index,
+                        total_products,
+                        url,
+                    )
+                else:
+                    sku = product.sku or "n/a"
+                    fetcher.logger.info(
+                        "Parsed product %s/%s %s sku=%s",
+                        index,
+                        total_products,
+                        product.product_name,
+                        sku,
+                    )
                 return product
 
-        tasks = [fetch_product(url) for url in product_urls]
+        tasks = [fetch_product(index, url) for index, url in enumerate(product_urls, start=1)]
         results = await asyncio.gather(*tasks, return_exceptions=True)
         products = []
         raw_record_count = 0

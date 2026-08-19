@@ -212,6 +212,8 @@ class WebAppAppTests(unittest.TestCase):
                 job_response = client.get(f"/jobs/{job_id}")
                 self.assertEqual(job_response.status_code, 200)
                 self.assertIn("Stop Job", job_response.text)
+                self.assertIn('id="started-at"', job_response.text)
+                self.assertIn('id="finished-at"', job_response.text)
 
     def test_job_detail_shows_stage_summary_for_scrape_and_sync_runs(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -552,3 +554,7 @@ class WebAppAppTests(unittest.TestCase):
                 self.assertEqual(response.status_code, 200)
                 payload = response.json()
                 self.assertEqual(payload["scraped_count"], 250)
+                self.assertEqual(payload["status"], "failed")
+                self.assertEqual(payload["requested_at"], "2026-06-04T12:00:00+00:00")
+                self.assertIsNone(payload["started_at"])
+                self.assertIsNotNone(payload["finished_at"])

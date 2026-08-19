@@ -91,8 +91,8 @@
     <div class="data-list">
       <div class="data-row"><div class="data-label">Requested by</div><div class="data-value">{{ job.requested_by }}</div></div>
       <div class="data-row"><div class="data-label">Requested</div><div class="data-value">{{ job.requested_at }}</div></div>
-      <div class="data-row"><div class="data-label">Started</div><div class="data-value">{{ job.started_at or "n/a" }}</div></div>
-      <div class="data-row"><div class="data-label">Finished</div><div class="data-value">{{ job.finished_at or "n/a" }}</div></div>
+      <div class="data-row"><div class="data-label">Started</div><div class="data-value" id="started-at">{{ job.started_at or "n/a" }}</div></div>
+      <div class="data-row"><div class="data-label">Finished</div><div class="data-value" id="finished-at">{{ job.finished_at or "n/a" }}</div></div>
       {% if job.stop_requested_at %}<div class="data-row"><div class="data-label">Stop requested</div><div class="data-value status-warn">{{ job.stop_requested_at }}</div></div>{% endif %}
       {% if job.error_message %}<div class="data-row"><div class="data-label">Message</div><div class="data-value status-bad">{{ job.error_message }}</div></div>{% endif %}
     </div>
@@ -239,9 +239,30 @@ async function poll() {
   if (document.getElementById('exit-code') && job.exit_code !== null) {
     document.getElementById('exit-code').textContent = job.exit_code;
   }
+  if (document.getElementById('started-at')) {
+    document.getElementById('started-at').textContent = job.started_at || 'n/a';
+  }
+  if (document.getElementById('finished-at')) {
+    document.getElementById('finished-at').textContent = job.finished_at || 'n/a';
+  }
   if (job.status === 'running' || job.status === 'queued') {
     const logResponse = await fetch('/api/jobs/{{ job.id }}/logs');
     const progress = await logResponse.json();
+    if (document.getElementById('job-status') && progress.status) {
+      document.getElementById('job-status').textContent = progress.status;
+    }
+    if (document.getElementById('remote-status')) {
+      document.getElementById('remote-status').textContent = progress.remote_status || job.remote_status || 'n/a';
+    }
+    if (document.getElementById('exit-code') && progress.exit_code !== null) {
+      document.getElementById('exit-code').textContent = progress.exit_code;
+    }
+    if (document.getElementById('started-at')) {
+      document.getElementById('started-at').textContent = progress.started_at || job.started_at || 'n/a';
+    }
+    if (document.getElementById('finished-at')) {
+      document.getElementById('finished-at').textContent = progress.finished_at || job.finished_at || 'n/a';
+    }
     if (document.getElementById('scraped-count')) {
       document.getElementById('scraped-count').textContent = progress.scraped_count ?? 0;
     }
@@ -262,6 +283,8 @@ async function poll() {
     if (document.getElementById('cloudwatch-log-stream') && progress.cloudwatch_log_stream) {
       document.getElementById('cloudwatch-log-stream').textContent = progress.cloudwatch_log_stream;
     }
+    setTimeout(poll, 3000);
+  } else if (job.status === 'succeeded' || job.status === 'failed') {
     setTimeout(poll, 3000);
   }
 }
