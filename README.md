@@ -136,6 +136,20 @@ AWS_REGION=eu-central-1
 
 When enabled, the app loads a JSON object from AWS Secrets Manager and injects any missing env vars from that secret at startup. The control panel only shows secret presence/health, never secret values.
 
+For production dashboard token management, configure the same backend in
+`control_panel.production.json`:
+
+```json
+{
+  "shared_secrets_backend": "aws-secrets-manager",
+  "aws_secrets_manager_secret_id": "yourbarmate-scrapers-prod"
+}
+```
+
+Entering a token under **Edit supplier** then updates that JSON secret in place.
+The next Fargate task loads the new token automatically; values are never displayed
+back in the dashboard or committed to Git.
+
 ### Control panel config
 
 Use [control_panel.example.json](/Users/jakobJakob/Documents/New%20project%202/control_panel.example.json) as the template for a local `control_panel.json`.

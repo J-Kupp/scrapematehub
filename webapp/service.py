@@ -32,11 +32,12 @@ def _normalize_env_value(value: str) -> str:
     return normalized
 
 
-def save_dashboard_secret(app_config: WebAppConfig, env_var_name: str, secret_value: str) -> Path:
-    env_var = env_var_name.strip()
-    if not env_var:
-        raise ValueError("Token env var cannot be empty.")
-    value = _normalize_env_value(secret_value)
+def _save_file_dashboard_secret(
+    app_config: WebAppConfig,
+    env_var: str,
+    value: str,
+) -> Path:
+    """Persist a local-development secret override without exposing it in supplier config."""
     path = app_config.resolved_dashboard_secrets_path()
     path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -56,6 +57,61 @@ def save_dashboard_secret(app_config: WebAppConfig, env_var_name: str, secret_va
         updated_lines.append(f"{env_var}={value}")
 
     path.write_text("\n".join(updated_lines) + "\n", encoding="utf-8")
+    return path
+
+
+def _save_aws_secrets_manager_secret(
+    app_config: WebAppConfig,
+    env_var: str,
+    value: str,
+) -> Path:
+    secret_id = app_config.resolved_aws_secrets_manager_secret_id()
+    if not secret_id:
+        raise ValueError(
+            "AWS Secrets Manager secret ID is not configured for dashboard token storage."
+        )
+    try:
+        import boto3  # type: ignore
+    except ImportError as exc:
+        raise RuntimeError("boto3 is required for AWS Secrets Manager token storage.") from exc
+
+    region = app_config.ecs_backend.region or os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION")
+    client = boto3.client("secretsmanager", region_name=region or None)
+    try:
+        response = client.get_secret_value(SecretId=secret_id)
+        raw_payload = response.get("SecretString", "")
+        payload = json.loads(raw_payload) if raw_payload else {}
+    except Exception as exc:
+        raise RuntimeError(f"Could not read AWS Secrets Manager secret {secret_id}.") from exc
+    if not isinstance(payload, dict):
+        raise ValueError("AWS Secrets Manager secret must contain a JSON object.")
+
+    payload[env_var] = value
+    try:
+        client.put_secret_value(
+            SecretId=secret_id,
+            SecretString=json.dumps(payload, ensure_ascii=False),
+        )
+    except Exception as exc:
+        raise RuntimeError(
+            "Could not save the token to AWS Secrets Manager. "
+            "The EC2 control-plane role needs secretsmanager:PutSecretValue."
+        ) from exc
+    return Path(f"aws-secrets-manager://{secret_id}")
+
+
+def save_dashboard_secret(app_config: WebAppConfig, env_var_name: str, secret_value: str) -> Path:
+    env_var = env_var_name.strip()
+    if not env_var:
+        raise ValueError("Token env var cannot be empty.")
+    value = _normalize_env_value(secret_value)
+    backend = app_config.resolved_shared_secrets_backend().lower()
+    if backend == "aws-secrets-manager":
+        path = _save_aws_secrets_manager_secret(app_config, env_var, value)
+    elif backend:
+        raise ValueError(f"Unsupported dashboard secrets backend: {backend}")
+    else:
+        path = _save_file_dashboard_secret(app_config, env_var, value)
     os.environ[env_var] = value
     return path
 
@@ -186,6 +242,7 @@ def system_health(app_config: WebAppConfig) -> dict[str, Any]:
         "db_path": str(app_config.resolved_db_path()),
         "env_file": str(app_config.resolved_env_path()),
         "dashboard_secrets_file": str(app_config.resolved_dashboard_secrets_path()),
+        "dashboard_secrets_backend": app_config.resolved_shared_secrets_backend() or "local_file",
         "job_backend": app_config.job_backend,
         "ecs_backend": {
             "region": app_config.ecs_backend.region,
@@ -208,8 +265,8 @@ def system_health(app_config: WebAppConfig) -> dict[str, Any]:
             for supplier in load_supplier_configs(app_config.resolved_supplier_config_path())
         ],
         "available_adapters": sorted(ADAPTER_REGISTRY.keys()),
-        "shared_secrets_backend": os.environ.get("SHARED_SECRETS_BACKEND", "").strip(),
-        "shared_secrets_secret_id": os.environ.get("AWS_SECRETS_MANAGER_SECRET_ID", "").strip(),
+        "shared_secrets_backend": app_config.resolved_shared_secrets_backend(),
+        "shared_secrets_secret_id": app_config.resolved_aws_secrets_manager_secret_id(),
         "release": read_release_metadata(app_config),
         "ecs_runtime_status": ecs_runtime_status(app_config),
     }

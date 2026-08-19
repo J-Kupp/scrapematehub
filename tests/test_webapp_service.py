@@ -192,6 +192,48 @@ class WebAppServiceTests(unittest.TestCase):
         self.assertIn("YBM_TOKEN_WALKER=walker-token-123", path.read_text(encoding="utf-8"))
         self.assertEqual(os.environ["YBM_TOKEN_WALKER"], "walker-token-123")
 
+    def test_save_dashboard_secret_updates_aws_secrets_manager_for_worker_jobs(self) -> None:
+        app_config = WebAppConfig(
+            db_path=str(self.root / "control_panel" / "control_panel.db"),
+            shared_secrets_backend="aws-secrets-manager",
+            aws_secrets_manager_secret_id="scrapematehub-prod",
+            ecs_backend=EcsBackendConfig(region="eu-central-1"),
+            bootstrap_users=[BootstrapUser(username="admin", password_env_var="NOOP")],
+        )
+        test_case = self
+
+        class _FakeSecretsClient:
+            def __init__(self) -> None:
+                self.secret_string = json.dumps({"YBM_TOKEN_SWISSBOX": "existing-token"})
+                self.put_calls: list[dict[str, str]] = []
+
+            def get_secret_value(self, **kwargs: str) -> dict[str, str]:
+                test_case.assertEqual(kwargs, {"SecretId": "scrapematehub-prod"})
+                return {"SecretString": self.secret_string}
+
+            def put_secret_value(self, **kwargs: str) -> None:
+                self.put_calls.append(kwargs)
+
+        secrets_client = _FakeSecretsClient()
+        fake_boto3 = ModuleType("boto3")
+
+        def _client(service_name: str, region_name: str | None = None):
+            self.assertEqual(service_name, "secretsmanager")
+            self.assertEqual(region_name, "eu-central-1")
+            return secrets_client
+
+        fake_boto3.client = _client  # type: ignore[attr-defined]
+
+        with patch.dict(sys.modules, {"boto3": fake_boto3}):
+            path = save_dashboard_secret(app_config, "YBM_TOKEN_WALKER", "walker-token-123")
+
+        self.assertEqual(str(path), "aws-secrets-manager:/scrapematehub-prod")
+        self.assertEqual(len(secrets_client.put_calls), 1)
+        saved_payload = json.loads(secrets_client.put_calls[0]["SecretString"])
+        self.assertEqual(saved_payload["YBM_TOKEN_SWISSBOX"], "existing-token")
+        self.assertEqual(saved_payload["YBM_TOKEN_WALKER"], "walker-token-123")
+        self.assertEqual(os.environ["YBM_TOKEN_WALKER"], "walker-token-123")
+
     def test_system_health_reports_release_and_ecs_runtime_status(self) -> None:
         control_panel_dir = self.root / "control_panel"
         control_panel_dir.mkdir(parents=True, exist_ok=True)
