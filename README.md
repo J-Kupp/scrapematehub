@@ -149,7 +149,8 @@ For production dashboard token management, configure the same backend in
 
 Entering a token under **Edit supplier** then updates that JSON secret in place.
 The next Fargate task loads the new token automatically; values are never displayed
-back in the dashboard or committed to Git.
+back in the dashboard or committed to Git. In this mode, AWS Secrets Manager is
+authoritative and retired local token overrides are ignored.
 
 ### Control panel config
 
