@@ -58,10 +58,12 @@ Per supplier runtime artifacts:
 
 ## Install
 
+Python 3.12 is required to match the runtime used by CI and deployment.
+
 1. Create a virtual environment:
 
 ```bash
-python3 -m venv .venv
+python3.12 -m venv .venv
 ```
 
 2. Install dependencies:

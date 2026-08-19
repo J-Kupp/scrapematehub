@@ -1,4 +1,5 @@
 .env.local
+.venv/
 *.pem
 .cache/
 .playwright-browsers/
