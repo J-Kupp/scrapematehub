@@ -11,6 +11,7 @@ from models import NormalizedProduct
 
 
 PRODUCT_URL_RE = re.compile(r"^https?://[^/]+/.+-\d+\.html$", re.IGNORECASE)
+PRODUCT_IDENTIFIER_RE = re.compile(r"-(?P<product_id>\d+)\.html$", re.IGNORECASE)
 COUNT_UNITS = {"stk", "st", "stück", "stueck"}
 WEIGHT_UNITS = {"g", "kg"}
 VOLUME_UNITS = {"ml", "cl", "dl", "l"}
@@ -52,6 +53,22 @@ def canonicalize_url(url: str) -> str:
 
 def product_candidate_from_url(url: str) -> bool:
     return bool(PRODUCT_URL_RE.match(canonicalize_url(url.strip())))
+
+
+def product_identifier_from_url(url: str) -> str:
+    """Return Walker's stable article ID even when a product has several category URLs."""
+    match = PRODUCT_IDENTIFIER_RE.search(canonicalize_url(url.strip()))
+    return match.group("product_id") if match else ""
+
+
+def extract_listing_product_total(html: str) -> int:
+    """Read Walker's advertised result count from a product listing page."""
+    soup = BeautifulSoup(html, "lxml")
+    progress = soup.select_one(".progressbar-wrapper[data-amount]")
+    if not progress:
+        return 0
+    value = re.sub(r"\D", "", str(progress.get("data-amount", "")))
+    return int(value) if value else 0
 
 
 def extract_product_links(html: str, base_url: str) -> list[str]:

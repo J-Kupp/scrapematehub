@@ -558,3 +558,49 @@ class WebAppAppTests(unittest.TestCase):
                 self.assertEqual(payload["requested_at"], "2026-06-04T12:00:00+00:00")
                 self.assertIsNone(payload["started_at"])
                 self.assertIsNotNone(payload["finished_at"])
+
+    def test_job_logs_endpoint_returns_latest_structured_progress(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            db_path = root / "control_panel.db"
+            env_path = root / ".env.local"
+            config_path = root / "control_panel.json"
+            supplier_config_path = root / "suppliers.json"
+            log_path = root / "job-1.log"
+            env_path.write_text("", encoding="utf-8")
+            supplier_config_path.write_text('{"suppliers":[]}', encoding="utf-8")
+            os.environ["CONTROL_PANEL_ADMIN_PASSWORD"] = "admin-pass"
+            os.environ["CONTROL_PANEL_SESSION_SECRET"] = "session-secret-for-tests"
+            config_path.write_text(
+                json.dumps(
+                    {
+                        "db_path": str(db_path),
+                        "supplier_config_path": str(supplier_config_path),
+                        "env_file": str(env_path),
+                        "scheduler_enabled": False,
+                        "bootstrap_users": [{"username": "admin", "password_env_var": "CONTROL_PANEL_ADMIN_PASSWORD"}],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            log_path.write_text(
+                "INFO PROGRESS phase=processing found=1001 processed=437 scraped=430 total=1001\n",
+                encoding="utf-8",
+            )
+            app = create_app(config_path)
+            conn = app.state.db
+            job_id = conn.execute(
+                """
+                INSERT INTO jobs (supplier_slug, job_type, status, requested_by, requested_at, command, env_file_ref, backend, log_path)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                ("walker", "scrape_and_sync", "running", "admin", "2026-06-04T12:00:00+00:00", "[]", str(env_path), "local_subprocess", str(log_path)),
+            ).lastrowid
+            conn.commit()
+            with TestClient(app) as client:
+                client.post("/login", data={"username": "admin", "password": "admin-pass"}, follow_redirects=True)
+                payload = client.get(f"/api/jobs/{job_id}/logs").json()
+            self.assertEqual(payload["phase"], "processing")
+            self.assertEqual(payload["found_count"], 1001)
+            self.assertEqual(payload["processed_count"], 437)
+            self.assertEqual(payload["scraped_count"], 430)
