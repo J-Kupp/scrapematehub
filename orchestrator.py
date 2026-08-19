@@ -42,6 +42,10 @@ def setup_service_logger() -> logging.Logger:
     file_handler = logging.FileHandler(log_path, encoding="utf-8")
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
+    # Fargate only retains stdout/stderr in CloudWatch, so mirror summaries there.
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(formatter)
+    logger.addHandler(stream_handler)
     return logger
 
 
@@ -89,6 +93,11 @@ def save_state(state: SupplierRunState, state_file: Path) -> None:
 def write_json(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def log_run_summary(logger: logging.Logger, run_summary: dict[str, Any]) -> None:
+    """Publish a machine-readable result marker for the ECS control plane."""
+    logger.info("RESULT_RUN_SUMMARY %s", json.dumps(run_summary, ensure_ascii=False, separators=(",", ":")))
 
 
 def load_products_from_jsonl(path: Path) -> list[NormalizedProduct]:
@@ -306,6 +315,7 @@ def run_supplier(
             write_json(paths["sync_report"], sync_summary_payload)
             run_summary = build_run_summary(run_result, dry_run=dry_run, sync_summary=sync_summary_payload, mode=mode)
             write_json(paths["run_summary"], run_summary)
+            log_run_summary(service_logger, run_summary)
             service_logger.error("Supplier %s sync failed: %s", supplier_slug, exc)
             raise
         sync_summary_payload = sync_summary.to_dict()
@@ -326,6 +336,7 @@ def run_supplier(
     run_summary = build_run_summary(run_result, dry_run=dry_run, sync_summary=sync_summary_payload, mode=mode)
     run_summary["correction_count"] = len(correction_rows)
     write_json(paths["run_summary"], run_summary)
+    log_run_summary(service_logger, run_summary)
     if not scrape_only and run_result.validation.errors:
         service_logger.error("Supplier %s failed validation: %s", supplier_slug, "; ".join(run_result.validation.errors))
         raise RuntimeError(f"Validation failed for {supplier_slug}: {'; '.join(run_result.validation.errors)}")

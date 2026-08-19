@@ -6,6 +6,7 @@ import json
 import logging
 import os
 from pathlib import Path
+import re
 import sqlite3
 import subprocess
 import sys
@@ -16,9 +17,15 @@ from typing import Any
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from config import PROJECT_ROOT, get_log_root, get_supplier_config, load_supplier_configs
-from orchestrator import supplier_paths
+from orchestrator import supplier_paths, write_json
 from webapp.config import EcsBackendConfig
-from webapp.ecs_jobs import describe_ecs_task, EcsJobError, launch_ecs_task, stop_ecs_task
+from webapp.ecs_jobs import (
+    describe_ecs_task,
+    EcsJobError,
+    launch_ecs_task,
+    read_ecs_task_logs,
+    stop_ecs_task,
+)
 
 
 JOB_STATUS_QUEUED = "queued"
@@ -27,10 +34,54 @@ JOB_STATUS_SUCCEEDED = "succeeded"
 JOB_STATUS_FAILED = "failed"
 JOB_STATUS_STOPPED = "stopped"
 logger = logging.getLogger(__name__)
+RESULT_RUN_SUMMARY_RE = re.compile(r"RESULT_RUN_SUMMARY\s+(?P<payload>\{.*\})$")
 
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def extract_worker_run_summary(logs: str) -> dict[str, Any]:
+    """Read the final structured result emitted by an ephemeral Fargate worker."""
+    for line in reversed(logs.splitlines()):
+        match = RESULT_RUN_SUMMARY_RE.search(line)
+        if not match:
+            continue
+        try:
+            payload = json.loads(match.group("payload"))
+        except json.JSONDecodeError:
+            continue
+        if isinstance(payload, dict):
+            return payload
+    return {}
+
+
+def persist_ecs_result_artifacts(
+    config: EcsBackendConfig,
+    *,
+    task_arn: str,
+    log_group: str,
+    log_stream: str,
+    paths: dict[str, Path],
+) -> dict[str, Any]:
+    """Copy the worker's result marker into EC2-local artifacts used by the dashboard."""
+    for _attempt in range(3):
+        _group, _stream, logs = read_ecs_task_logs(
+            config,
+            task_arn=task_arn,
+            log_group=log_group,
+            log_stream=log_stream,
+            limit=500,
+        )
+        summary = extract_worker_run_summary(logs)
+        if summary:
+            write_json(paths["run_summary"], summary)
+            sync_summary = summary.get("sync_summary")
+            if isinstance(sync_summary, dict):
+                write_json(paths["sync_report"], sync_summary)
+            return summary
+        time.sleep(1.0)
+    return {}
 
 
 def build_job_command(
@@ -715,6 +766,14 @@ class JobRunner:
                 if result.last_status == "STOPPED":
                     stopped = self._job_stop_requested(job["id"])
                     status = JOB_STATUS_STOPPED if stopped else (JOB_STATUS_SUCCEEDED if result.exit_code == 0 else JOB_STATUS_FAILED)
+                    if not stopped:
+                        persist_ecs_result_artifacts(
+                            self.ecs_backend,
+                            task_arn=launch.task_arn,
+                            log_group=result.log_group,
+                            log_stream=result.log_stream,
+                            paths=paths,
+                        )
                     self.conn.execute(
                         """
                         UPDATE jobs
