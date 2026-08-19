@@ -6,6 +6,7 @@ from adapters.base import SupplierAdapter
 
 ADAPTER_REGISTRY = {
     "gourmador": "adapters.gourmador:GourmadorAdapter",
+    "laenggasstee": "adapters.laenggasstee:LaenggassTeeAdapter",
     "swissbox": "adapters.swissbox:SwissboxAdapter",
     "walker": "adapters.walker:WalkerAdapter",
 }
