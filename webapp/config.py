@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from config import DEFAULT_ENV_PATH, PROJECT_ROOT, SUPPLIER_CONFIG_PATH, load_env_file
+from shared_secrets import load_shared_secrets
 
 
 WEBAPP_CONFIG_PATH = PROJECT_ROOT / "control_panel.json"
@@ -245,8 +246,13 @@ def load_webapp_config(config_path: Path | None = None) -> WebAppConfig:
     if shared_secrets_region:
         os.environ.setdefault("AWS_REGION", shared_secrets_region)
     load_env_file(config.resolved_env_path())
+    shared_backend = config.resolved_shared_secrets_backend()
+    if shared_backend:
+        # The configured shared store is authoritative in production. This prevents
+        # retired local overrides from silently replacing a token after restart.
+        load_shared_secrets(overwrite=True)
     secrets_path = config.resolved_dashboard_secrets_path()
-    if secrets_path.exists():
+    if not shared_backend and secrets_path.exists():
         for raw_line in secrets_path.read_text(encoding="utf-8").splitlines():
             line = raw_line.strip()
             if not line or line.startswith("#") or "=" not in line:

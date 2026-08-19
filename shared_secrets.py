@@ -4,7 +4,7 @@ import json
 import os
 
 
-def load_shared_secrets() -> None:
+def load_shared_secrets(*, overwrite: bool = False) -> None:
     backend = os.environ.get("SHARED_SECRETS_BACKEND", "").strip().lower()
     if not backend:
         return
@@ -31,5 +31,5 @@ def load_shared_secrets() -> None:
     if not isinstance(payload, dict):
         raise ValueError("AWS Secrets Manager payload must be a JSON object.")
     for key, value in payload.items():
-        if key and key not in os.environ and value is not None:
+        if key and value is not None and (overwrite or key not in os.environ):
             os.environ[key] = str(value)
