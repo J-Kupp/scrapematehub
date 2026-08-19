@@ -17,8 +17,10 @@ from adapters.walker.transform import (
     extract_category_links,
     extract_manufacturer_link,
     extract_next_listing_url,
+    extract_listing_product_total,
     extract_product_links,
     parse_product_record,
+    product_identifier_from_url,
 )
 from config import get_cache_root, get_log_root
 from core.contracts import SupplierScrapeResult
@@ -206,7 +208,8 @@ class WalkerAdapter(SupplierAdapter):
     ) -> set[str]:
         to_visit = [self.listing_url]
         seen_pages: set[str] = set()
-        product_urls: set[str] = set()
+        product_urls: dict[str, str] = {}
+        expected_product_count = 0
 
         # Walker advertises 1'001 products, but its ungrouped listing starts
         # repeating entries after roughly half the catalogue. Its category tree
@@ -223,9 +226,11 @@ class WalkerAdapter(SupplierAdapter):
                     if url.rstrip("/") != self.listing_url.rstrip("/")
                 ]
                 to_visit = category_urls or to_visit
+                expected_product_count = extract_listing_product_total(initial_html)
                 fetcher.logger.info(
-                    "Walker category discovery found %s category listing URLs",
+                    "Walker category discovery found %s category listing URLs (catalogue advertises %s products)",
                     len(category_urls),
+                    expected_product_count or "an unknown number of",
                 )
             except Exception as exc:
                 failures.append(
@@ -249,12 +254,27 @@ class WalkerAdapter(SupplierAdapter):
                 failures.append({"stage": "listing", "url": page_url, "reason": str(exc)})
                 continue
             found_urls = extract_product_links(html, self.base_url)
-            product_urls.update(found_urls)
+            added_count = 0
+            for product_url in found_urls:
+                # Walker exposes the same article through several category paths.
+                # The article number in the final URL segment is the stable identity.
+                product_key = product_identifier_from_url(product_url) or product_url
+                if product_key not in product_urls:
+                    product_urls[product_key] = product_url
+                    added_count += 1
             fetcher.logger.info(
-                "Walker listing page %s discovered %s product URLs (%s total)",
+                "Walker listing page %s found=%s new=%s unique=%s expected=%s",
                 len(seen_pages),
                 len(found_urls),
+                added_count,
                 len(product_urls),
+                expected_product_count or "unknown",
+            )
+            fetcher.logger.info(
+                "PROGRESS phase=discovering found=%s pages=%s expected=%s",
+                len(product_urls),
+                len(seen_pages),
+                expected_product_count or 0,
             )
             listing_diagnostics.append(
                 {
@@ -265,11 +285,17 @@ class WalkerAdapter(SupplierAdapter):
                     "cumulative_product_url_count": str(len(product_urls)),
                 }
             )
+            if expected_product_count and len(product_urls) >= expected_product_count:
+                fetcher.logger.info(
+                    "Walker discovery reached the advertised catalogue size (%s products).",
+                    expected_product_count,
+                )
+                break
             next_url = extract_next_listing_url(html, self.base_url)
             if next_url and next_url not in seen_pages:
                 to_visit.append(next_url)
 
-        return product_urls
+        return set(product_urls.values())
 
     async def _fetch_products(
         self,
@@ -282,46 +308,67 @@ class WalkerAdapter(SupplierAdapter):
         semaphore = asyncio.Semaphore(self.detail_concurrency)
 
         total_products = len(product_urls)
+        processed_count = 0
+        scraped_count = 0
+        fetcher.logger.info(
+            "PROGRESS phase=processing found=%s processed=0 scraped=0 total=%s",
+            total_products,
+            total_products,
+        )
 
         async def fetch_product(index: int, url: str):
             async with semaphore:
-                fetcher.logger.info(
-                    "Walker fetch start %s/%s %s",
-                    index,
-                    total_products,
-                    url,
-                )
-                html = await fetcher.fetch_text(url, force_refresh=force_refresh)
-                external_url = extract_manufacturer_link(html, self.base_url)
-                external_html = None
-                if self.fetch_external_pages and external_url and not external_url.lower().endswith(".pdf"):
-                    try:
-                        external_html = await fetcher.fetch_text(external_url, force_refresh=force_refresh)
-                    except Exception as exc:
-                        failures.append({"stage": "external", "url": external_url, "reason": str(exc)})
-                product = parse_product_record(
-                    html,
-                    url,
-                    external_html=external_html,
-                    external_url=external_url or None,
-                )
-                if product is None:
-                    fetcher.logger.warning(
-                        "Walker parse failed %s/%s %s",
+                nonlocal processed_count, scraped_count
+                product = None
+                try:
+                    fetcher.logger.info(
+                        "Walker fetch start %s/%s %s",
                         index,
                         total_products,
                         url,
                     )
-                else:
-                    sku = product.sku or "n/a"
-                    fetcher.logger.info(
-                        "Parsed product %s/%s %s sku=%s",
-                        index,
-                        total_products,
-                        product.product_name,
-                        sku,
+                    html = await fetcher.fetch_text(url, force_refresh=force_refresh)
+                    external_url = extract_manufacturer_link(html, self.base_url)
+                    external_html = None
+                    if self.fetch_external_pages and external_url and not external_url.lower().endswith(".pdf"):
+                        try:
+                            external_html = await fetcher.fetch_text(external_url, force_refresh=force_refresh)
+                        except Exception as exc:
+                            failures.append({"stage": "external", "url": external_url, "reason": str(exc)})
+                    product = parse_product_record(
+                        html,
+                        url,
+                        external_html=external_html,
+                        external_url=external_url or None,
                     )
-                return product
+                    if product is None:
+                        fetcher.logger.warning(
+                            "Walker parse failed %s/%s %s",
+                            index,
+                            total_products,
+                            url,
+                        )
+                    else:
+                        sku = product.sku or "n/a"
+                        fetcher.logger.info(
+                            "Parsed product %s/%s %s sku=%s",
+                            index,
+                            total_products,
+                            product.product_name,
+                            sku,
+                        )
+                    return product
+                finally:
+                    processed_count += 1
+                    if product is not None:
+                        scraped_count += 1
+                    fetcher.logger.info(
+                        "PROGRESS phase=processing found=%s processed=%s scraped=%s total=%s",
+                        total_products,
+                        processed_count,
+                        scraped_count,
+                        total_products,
+                    )
 
         tasks = [fetch_product(index, url) for index, url in enumerate(product_urls, start=1)]
         results = await asyncio.gather(*tasks, return_exceptions=True)

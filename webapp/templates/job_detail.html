@@ -52,23 +52,23 @@
     <div class="section-title">
       <div>
         <h2>Progress</h2>
-        <p>Live scrape counter and sync trouble signals while the job is running.</p>
+        <p id="progress-phase">Current phase: {{ progress_phase | replace('_', ' ') | title }}{% if total_count %} · {{ processed_count }} of {{ total_count }} product pages processed{% endif %}</p>
       </div>
     </div>
     <div class="summary-grid" style="grid-template-columns:repeat(2,minmax(0,1fr));">
       <div class="panel-flat">
-        <div class="metric-value" id="scraped-count">{{ scraped_count or scrape_stage.get('product_count', 0) or 0 }}</div>
-        <div class="metric-label">Items scraped</div>
+        <div class="metric-value" id="found-count">{{ found_count or scrape_stage.get('discovered_product_url_count', 0) or 0 }}</div>
+        <div class="metric-label">Products found</div>
       </div>
       <div class="panel-flat">
-        <div class="metric-value" id="uploaded-count">{{ sync_stage.get('uploaded_products', 0) or 0 }}</div>
-        <div class="metric-label">Items uploaded</div>
+        <div class="metric-value" id="scraped-count">{{ scraped_count or scrape_stage.get('product_count', 0) or 0 }}</div>
+        <div class="metric-label">Products scraped</div>
       </div>
     </div>
     <div class="summary-grid" style="grid-template-columns:repeat(2,minmax(0,1fr)); margin-top:14px;">
       <div class="panel-flat">
-        <div class="metric-value" id="validated-count">{{ validation_stage.get('passed_row_count', 0) if validation_stage.get('performed') else 0 }}</div>
-        <div class="metric-label">Passed validation</div>
+        <div class="metric-value" id="uploaded-count">{{ sync_stage.get('uploaded_products', 0) or 0 }}</div>
+        <div class="metric-label">Items uploaded</div>
       </div>
       <div class="panel-flat">
         <div class="metric-value" id="error-count">{{ (errors|length) if errors else (sync_stage.get('errors', [])|length + validation_stage.get('errors', [])|length) }}</div>
@@ -122,7 +122,7 @@
       </div>
     </div>
     <div class="panel-flat">
-      <div class="stat-label">Validation</div>
+      <div class="stat-label">Passed validation</div>
       <div class="stat-value">{{ validation_stage.get('passed_row_count', 0) if validation_stage.get('performed') else "Not run" }}</div>
       <div class="muted tiny">
         {% if validation_stage.get('performed') %}
@@ -265,6 +265,14 @@ async function poll() {
     }
     if (document.getElementById('scraped-count')) {
       document.getElementById('scraped-count').textContent = progress.scraped_count ?? 0;
+    }
+    if (document.getElementById('found-count')) {
+      document.getElementById('found-count').textContent = progress.found_count ?? 0;
+    }
+    if (document.getElementById('progress-phase')) {
+      const phase = (progress.phase || 'waiting').replaceAll('_', ' ');
+      const detail = progress.total_count ? ` · ${progress.processed_count || 0} of ${progress.total_count} product pages processed` : '';
+      document.getElementById('progress-phase').textContent = `Current phase: ${phase}${detail}`;
     }
     if (document.getElementById('error-box')) {
       if (progress.errors && progress.errors.length) {

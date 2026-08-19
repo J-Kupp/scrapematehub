@@ -88,6 +88,36 @@ def count_local_log_matches(log_path: str | None, pattern: re.Pattern[str]) -> i
 
 PARSED_PRODUCT_RE = re.compile(r"\bParsed product\b")
 ERROR_LINE_RE = re.compile(r"\b(ERROR|CRITICAL|Traceback|Exception|FAILED)\b", re.IGNORECASE)
+PROGRESS_MARKER_RE = re.compile(r"\bPROGRESS\s+(?P<fields>.+)$")
+PROGRESS_FIELD_RE = re.compile(r"\b(?P<key>phase|found|processed|scraped|total|pages)=(?P<value>[^\s]+)")
+
+
+def parse_live_progress(log_text: str) -> dict[str, int | str]:
+    """Read the most recent absolute progress values emitted by an adapter."""
+    progress: dict[str, int | str] = {
+        "phase": "waiting",
+        "found_count": 0,
+        "processed_count": 0,
+        "scraped_count": 0,
+        "total_count": 0,
+    }
+    for line in log_text.splitlines():
+        marker = PROGRESS_MARKER_RE.search(line)
+        if not marker:
+            continue
+        for field in PROGRESS_FIELD_RE.finditer(marker.group("fields")):
+            key, value = field.group("key"), field.group("value")
+            if key == "phase":
+                progress["phase"] = value
+            elif key == "found":
+                progress["found_count"] = int(value)
+            elif key == "processed":
+                progress["processed_count"] = int(value)
+            elif key == "scraped":
+                progress["scraped_count"] = int(value)
+            elif key == "total":
+                progress["total_count"] = int(value)
+    return progress
 
 
 def summarize_job_logs(log_text: str) -> str:
@@ -119,8 +149,9 @@ def build_job_progress(
     app_config: WebAppConfig,
 ) -> dict[str, Any]:
     log_group, log_stream, log_tail = load_job_logs(job, app_config)
-    scraped_count = 0
-    if job.get("backend") == "ecs_fargate" and job.get("remote_job_id"):
+    live_progress = parse_live_progress(log_tail)
+    scraped_count = int(live_progress["scraped_count"])
+    if not scraped_count and job.get("backend") == "ecs_fargate" and job.get("remote_job_id"):
         try:
             scraped_count = count_ecs_stream_matches(
                 app_config.ecs_backend,
@@ -130,7 +161,7 @@ def build_job_progress(
             )
         except Exception:
             scraped_count = 0
-    else:
+    elif not scraped_count:
         scraped_count = count_local_log_matches(job.get("log_path"), PARSED_PRODUCT_RE)
 
     error_lines = []
@@ -145,6 +176,10 @@ def build_job_progress(
 
     return {
         "scraped_count": scraped_count,
+        "found_count": live_progress["found_count"],
+        "processed_count": live_progress["processed_count"],
+        "total_count": live_progress["total_count"],
+        "phase": live_progress["phase"],
         "errors": error_lines[-10:],
         "log_group": log_group,
         "log_stream": log_stream,
@@ -533,6 +568,10 @@ def create_app(config_path: Path | None = None) -> FastAPI:
                 request,
                 job=job,
                 scraped_count=progress["scraped_count"],
+                found_count=progress["found_count"],
+                processed_count=progress["processed_count"],
+                total_count=progress["total_count"],
+                progress_phase=progress["phase"],
                 errors=progress["errors"],
                 run_summary=run_summary,
                 sync_report=sync_report,
@@ -684,6 +723,10 @@ def create_app(config_path: Path | None = None) -> FastAPI:
             "exit_code": job.get("exit_code"),
             "remote_status": job.get("remote_status"),
             "scraped_count": progress["scraped_count"],
+            "found_count": progress["found_count"],
+            "processed_count": progress["processed_count"],
+            "total_count": progress["total_count"],
+            "phase": progress["phase"],
             "errors": progress["errors"],
             "cloudwatch_log_group": progress["log_group"],
             "cloudwatch_log_stream": progress["log_stream"],

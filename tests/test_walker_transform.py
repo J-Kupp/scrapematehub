@@ -4,10 +4,12 @@ import unittest
 
 from adapters.walker.transform import (
     extract_category_links,
+    extract_listing_product_total,
     extract_next_listing_url,
     extract_product_links,
     parse_product_record,
     product_candidate_from_url,
+    product_identifier_from_url,
 )
 
 
@@ -63,6 +65,28 @@ class WalkerTransformTests(unittest.TestCase):
         self.assertEqual(
             extract_next_listing_url(html, "https://shop.walker.swiss"),
             "https://shop.walker.swiss/de/alle-produkte/?pposCatItem=25",
+        )
+
+    def test_product_identifier_deduplicates_category_variants(self) -> None:
+        self.assertEqual(
+            product_identifier_from_url(
+                "https://shop.walker.swiss/de/alle-produkte/fruit/Apple-123.html"
+            ),
+            "123",
+        )
+        self.assertEqual(
+            product_identifier_from_url(
+                "https://shop.walker.swiss/de/alle-produkte/offers/Apple-123.html"
+            ),
+            "123",
+        )
+
+    def test_extract_listing_product_total_reads_advertised_catalogue_size(self) -> None:
+        self.assertEqual(
+            extract_listing_product_total(
+                '<div class="progressbar-wrapper" data-amount="1\'001"></div>'
+            ),
+            1001,
         )
 
     def test_parse_product_record_includes_external_page_enrichment(self) -> None:
