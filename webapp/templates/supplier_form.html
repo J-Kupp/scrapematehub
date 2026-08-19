@@ -54,7 +54,7 @@
         <input type="password" name="ybm_token_value" value="" autocomplete="new-password" placeholder="{{ 'Leave blank to keep current token' if form_mode == 'edit' else 'Paste token to save it in the dashboard secret store' }}" />
       </label>
       <p class="soft tiny" style="margin-top:4px;">
-        The value is stored in the dashboard-managed secret override file and is never shown again in plain text. Leave this blank during edits if you do not want to change the saved token.
+        The value is saved in the configured secret store and is never shown again in plain text. Leave this blank during edits if you do not want to change the saved token.
       </p>
       <label>YourBarMate API base
         <input type="url" name="ybm_api_base" value="{{ supplier.ybm_api_base if supplier else 'https://connect.yourbarmate.com/api' }}" />

@@ -43,6 +43,8 @@ class WebAppConfig:
     session_secret_env_var: str = "CONTROL_PANEL_SESSION_SECRET"
     env_file: str = ".env.local"
     dashboard_secrets_file: str = ""
+    shared_secrets_backend: str = ""
+    aws_secrets_manager_secret_id: str = ""
     scheduler_enabled: bool = True
     scheduler_mode: str = "internal"
     session_same_site: str = "lax"
@@ -81,6 +83,18 @@ class WebAppConfig:
                 path = PROJECT_ROOT / path
             return path
         return self.resolved_db_path().parent / "dashboard-secrets.env"
+
+    def resolved_shared_secrets_backend(self) -> str:
+        return (
+            self.shared_secrets_backend.strip()
+            or os.environ.get("SHARED_SECRETS_BACKEND", "").strip()
+        )
+
+    def resolved_aws_secrets_manager_secret_id(self) -> str:
+        return (
+            self.aws_secrets_manager_secret_id.strip()
+            or os.environ.get("AWS_SECRETS_MANAGER_SECRET_ID", "").strip()
+        )
 
     def resolved_artifact_roots(self) -> list[Path]:
         roots: list[Path] = []
@@ -164,6 +178,13 @@ def load_webapp_config(config_path: Path | None = None) -> WebAppConfig:
             dashboard_secrets_file=payload.get(
                 "dashboard_secrets_file", config.dashboard_secrets_file
             ),
+            shared_secrets_backend=payload.get(
+                "shared_secrets_backend", config.shared_secrets_backend
+            ),
+            aws_secrets_manager_secret_id=payload.get(
+                "aws_secrets_manager_secret_id",
+                config.aws_secrets_manager_secret_id,
+            ),
             scheduler_enabled=bool(
                 payload.get("scheduler_enabled", config.scheduler_enabled)
             ),
@@ -201,6 +222,16 @@ def load_webapp_config(config_path: Path | None = None) -> WebAppConfig:
                 artifact_prefix=ecs_backend_payload.get("artifact_prefix", "suppliers"),
             ),
         )
+    # Production config is the source of truth; the env file may still be used locally.
+    if config.shared_secrets_backend.strip():
+        os.environ.setdefault("SHARED_SECRETS_BACKEND", config.shared_secrets_backend.strip())
+    if config.aws_secrets_manager_secret_id.strip():
+        os.environ.setdefault(
+            "AWS_SECRETS_MANAGER_SECRET_ID",
+            config.aws_secrets_manager_secret_id.strip(),
+        )
+    if config.ecs_backend.region:
+        os.environ.setdefault("AWS_REGION", config.ecs_backend.region)
     load_env_file(config.resolved_env_path())
     secrets_path = config.resolved_dashboard_secrets_path()
     if secrets_path.exists():

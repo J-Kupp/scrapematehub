@@ -5,6 +5,8 @@
   "supplier_config_path": "/opt/yourbarmate-suppliers/app/suppliers.json",
   "session_secret_env_var": "CONTROL_PANEL_SESSION_SECRET",
   "env_file": "/etc/yourbarmate-suppliers.env",
+  "shared_secrets_backend": "aws-secrets-manager",
+  "aws_secrets_manager_secret_id": "yourbarmate-scrapers-prod",
   "scheduler_enabled": true,
   "scheduler_mode": "internal",
   "job_backend": "local_subprocess",
