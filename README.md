@@ -331,6 +331,51 @@ The control panel can be used before code exists:
 - assign the expected token env var
 - use the Connections page to see what is still missing
 
+### Contributor quick start
+
+If a teammate or another Codex instance joins this repo, the default way of working is:
+1. pull the latest `main`
+2. create a new branch for the supplier or feature
+3. implement supplier code under `adapters/<supplier_slug>/`
+4. add or update supplier tests and fixtures
+5. run local tests before pushing
+6. push the branch to GitHub
+7. open a pull request
+8. wait for CI to pass
+9. merge to `main`
+10. let GitHub Actions deploy the merged code to EC2 automatically
+
+What lives where:
+- Git is the source of truth for scraper code, transformers, shared platform code, tests, and deployment assets
+- the dashboard is the operations surface for supplier config, schedules, token entry, onboarding state, and job runs
+- EC2 is a deploy target only and should not be used as a manual coding environment
+
+### New supplier SOP
+
+Use this checklist for every new supplier:
+1. create `adapters/<supplier_slug>/scraper.py`
+2. create `adapters/<supplier_slug>/transform.py`
+3. add fixtures under `adapters/<supplier_slug>/fixtures/`
+4. add at least one supplier test such as `tests/test_<supplier_slug>_transform.py`
+5. create the supplier config in the dashboard or `suppliers.json`
+6. set the expected `ybm_token_env_var`
+7. push a PR with code and tests together
+8. merge to `main`
+9. let the deploy workflow update EC2
+10. set the real token in the dashboard, configure the schedule, and run the first job
+
+### Verified repository workflow
+
+This repository's branch -> PR -> merge -> deploy flow was verified on August 19, 2026 with a test pull request:
+- branch created from `main`
+- pushed to GitHub
+- PR opened and checked by CI
+- merged into `main`
+- `Deploy to AWS EC2` ran successfully
+- live control panel stayed healthy after deploy
+
+That means a coworker can follow the same Git-based workflow for real supplier work.
+
 ## Resume After Interruption
 
 Re-run the same command. Existing snapshots are reused from:
