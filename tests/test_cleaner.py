@@ -60,6 +60,48 @@ class CleanerTests(unittest.TestCase):
         self.assertEqual(rows[0]["Item ID"], "AW402-07-8")
         self.assertEqual(rows[1]["Item ID"], "AW402-07-8-row00003")
 
+    def test_clears_invalid_fractional_bundle_size(self) -> None:
+        rows, _ = clean_rows(
+            [
+                self.make_row(
+                    **{
+                        "Item name": "EMMI Crème fraîche 35% 4.5dl",
+                        "Vessel size": "0.45",
+                        "Vessel unit": "l",
+                        "Bundle size": "0.45",
+                        "Bundle type": "PK",
+                    }
+                )
+            ]
+        )
+        cleaned = rows[0]
+        self.assertEqual(cleaned["Vessel size"], "0.45")
+        self.assertEqual(cleaned["Vessel unit"], "l")
+        self.assertEqual(cleaned["Bundle size"], "")
+        self.assertEqual(cleaned["Bundle type"], "")
+
+    def test_fractional_gram_vessel_is_flattened_to_quantity(self) -> None:
+        rows, _ = clean_rows(
+            [
+                self.make_row(
+                    **{
+                        "Item name": "Philadelphia Portionen 24x16.6g",
+                        "Description": "",
+                        "Vessel size": "16.6",
+                        "Vessel unit": "g",
+                        "Vessel type": "CT",
+                        "Bundle size": "24",
+                        "Bundle type": "PK",
+                    }
+                )
+            ]
+        )
+        cleaned = rows[0]
+        self.assertEqual(cleaned["Vessel size"], "1")
+        self.assertEqual(cleaned["Vessel unit"], "quantity")
+        self.assertEqual(cleaned["Bundle size"], "24")
+        self.assertEqual(cleaned["Bundle type"], "PK")
+
 
 if __name__ == "__main__":
     unittest.main()

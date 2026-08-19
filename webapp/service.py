@@ -23,6 +23,61 @@ def read_json_file(path: Path) -> dict[str, Any]:
         return {}
 
 
+def read_release_metadata(app_config: WebAppConfig) -> dict[str, Any]:
+    release_path = app_config.resolved_db_path().parent / "release.json"
+    payload = read_json_file(release_path)
+    if not payload:
+        return {
+            "path": str(release_path),
+            "available": False,
+            "revision": "",
+            "deployed_at": "",
+            "source": "",
+            "hostname": "",
+        }
+    return {
+        "path": str(release_path),
+        "available": True,
+        "revision": str(payload.get("revision", "")),
+        "deployed_at": str(payload.get("deployed_at", "")),
+        "source": str(payload.get("source", "")),
+        "hostname": str(payload.get("hostname", "")),
+    }
+
+
+def ecs_runtime_status(app_config: WebAppConfig) -> dict[str, Any]:
+    status: dict[str, Any] = {
+        "enabled": app_config.job_backend == "ecs_fargate",
+        "credentials_ok": False,
+        "sts_identity": "",
+        "task_definition_ok": False,
+        "task_definition_arn": "",
+        "error": "",
+    }
+    if app_config.job_backend != "ecs_fargate":
+        return status
+    try:
+        import boto3  # type: ignore
+    except ImportError:
+        status["error"] = "boto3 is not installed."
+        return status
+    try:
+        region = app_config.ecs_backend.region or os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION")
+        sts = boto3.client("sts", region_name=region or None)
+        identity = sts.get_caller_identity()
+        status["credentials_ok"] = True
+        status["sts_identity"] = identity.get("Arn", "")
+
+        ecs = boto3.client("ecs", region_name=region or None)
+        response = ecs.describe_task_definition(taskDefinition=app_config.ecs_backend.task_definition)
+        task_definition = response.get("taskDefinition", {})
+        status["task_definition_ok"] = bool(task_definition)
+        status["task_definition_arn"] = task_definition.get("taskDefinitionArn", "")
+    except Exception as exc:
+        status["error"] = str(exc)
+    return status
+
+
 def supplier_health_summary(
     conn: sqlite3.Connection,
     app_config: WebAppConfig,
@@ -54,11 +109,20 @@ def supplier_health_summary(
                 "enabled": supplier.enabled,
                 "base_url": supplier.base_url,
                 "schedule": supplier.schedule,
+                "catalog_update_policy": supplier.catalog_update_policy,
+                "catalog_update_policy_label": describe_catalog_update_policy(
+                    supplier.catalog_update_policy
+                ),
                 "secret_present": bool(os.environ.get(supplier.ybm_token_env_var, "").strip()),
                 "token_env_var": supplier.ybm_token_env_var,
                 "last_successful_run_at": state.last_successful_run_at,
                 "latest_job": latest_job,
-                "last_run_status": "ok" if run_summary.get("validation", {}).get("errors") == [] else "error",
+                "last_run_status": (
+                    "ok"
+                    if run_summary.get("validation", {}).get("performed", False)
+                    and run_summary.get("validation", {}).get("errors") == []
+                    else ("scraped" if run_summary.get("mode") == "scrape_only" else "error")
+                ),
                 "last_run_summary": run_summary,
                 "last_sync_summary": sync_report,
                 "product_count": run_summary.get("product_count", 0),
@@ -108,6 +172,8 @@ def system_health(app_config: WebAppConfig) -> dict[str, Any]:
         "available_adapters": sorted(ADAPTER_REGISTRY.keys()),
         "shared_secrets_backend": os.environ.get("SHARED_SECRETS_BACKEND", "").strip(),
         "shared_secrets_secret_id": os.environ.get("AWS_SECRETS_MANAGER_SECRET_ID", "").strip(),
+        "release": read_release_metadata(app_config),
+        "ecs_runtime_status": ecs_runtime_status(app_config),
     }
 
 
@@ -137,11 +203,24 @@ def supplier_by_slug(slug: str, app_config: WebAppConfig | None = None) -> dict[
         "base_url": supplier.base_url,
         "token_env_var": supplier.ybm_token_env_var,
         "schedule": supplier.schedule,
+        "catalog_update_policy": supplier.catalog_update_policy,
+        "catalog_update_policy_label": describe_catalog_update_policy(
+            supplier.catalog_update_policy
+        ),
         "scrape_settings": supplier.scrape_settings,
         "output_dir": supplier.output_dir,
         "ybm_api_base": supplier.ybm_api_base,
         "structure": structure,
     }
+
+
+def describe_catalog_update_policy(policy: str) -> str:
+    normalized = policy.strip().lower()
+    if normalized == "delete_missing":
+        return "Delete missing items"
+    if normalized == "keep_existing":
+        return "Keep old items"
+    return policy.replace("_", " ").strip().title() if policy else "Delete missing items"
 
 
 def describe_schedule(schedule: dict[str, Any]) -> str:
@@ -185,6 +264,7 @@ def build_supplier_from_form(
     base_url: str,
     ybm_token_env_var: str,
     output_dir: str,
+    catalog_update_policy: str,
     ybm_api_base: str,
     schedule_enabled: bool,
     schedule_frequency: str,
@@ -210,6 +290,7 @@ def build_supplier_from_form(
         base_url=base_url.strip(),
         ybm_token_env_var=ybm_token_env_var.strip(),
         output_dir=output_dir.strip(),
+        catalog_update_policy=catalog_update_policy.strip() or "delete_missing",
         schedule=normalize_schedule_form(
             enabled=schedule_enabled,
             frequency=schedule_frequency,
@@ -251,7 +332,7 @@ def onboarding_status(
     sync_report: dict[str, Any],
 ) -> dict[str, Any]:
     validation = run_summary.get("validation", {})
-    validation_passed = bool(run_summary) and not validation.get("errors")
+    validation_passed = bool(run_summary) and validation.get("performed", False) and not validation.get("errors")
     dry_run_seen = bool(run_summary)
     sync_errors = sync_report.get("errors", []) if isinstance(sync_report, dict) else []
     first_sync_passed = bool(sync_report) and not sync_report.get("aborted") and not sync_errors

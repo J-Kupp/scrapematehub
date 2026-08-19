@@ -2,8 +2,8 @@
   "family": "yourbarmate-scraper-worker",
   "networkMode": "awsvpc",
   "requiresCompatibilities": ["FARGATE"],
-  "cpu": "1024",
-  "memory": "2048",
+  "cpu": "4096",
+  "memory": "8192",
   "executionRoleArn": "arn:aws:iam::<ACCOUNT_ID>:role/yourbarmate-ecs-task-execution",
   "taskRoleArn": "arn:aws:iam::<ACCOUNT_ID>:role/yourbarmate-ecs-task-runtime",
   "containerDefinitions": [
@@ -11,6 +11,7 @@
       "name": "scraper-worker",
       "image": "<ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/yourbarmate-scraper-worker:latest",
       "essential": true,
+      "stopTimeout": 10,
       "command": ["--help"],
       "environment": [
         { "name": "SHARED_SECRETS_BACKEND", "value": "aws-secrets-manager" },

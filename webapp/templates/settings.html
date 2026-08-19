@@ -1,30 +1,43 @@
 {% extends "base.html" %}
 {% block header %}
-<div class="hero">
+<div class="page-header">
   <div>
     <h1>Settings</h1>
-    <p class="muted">Manage control-panel access and keep the admin account secure with the same clean operational tone as the main YourBarMate experience.</p>
+    <p>Access and account settings for the control panel.</p>
   </div>
 </div>
 {% endblock %}
 {% block content %}
+{% if notice %}<div class="notice">{{ notice }}</div>{% endif %}
+{% if error %}<div class="error">{{ error }}</div>{% endif %}
 <div class="grid cols-2">
-  <div class="card">
-    <h3>Change Password</h3>
-    {% if notice %}<p class="notice">{{ notice }}</p>{% endif %}
-    {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  <section class="card">
+    <div class="section-title">
+      <div>
+        <h2>Change Password</h2>
+        <p>Use a long password. This protects the public control panel while we are in HTTP mode.</p>
+      </div>
+    </div>
     <form method="post" action="/settings/password">
       <label>Current password <input type="password" name="current_password" required /></label>
       <label>New password <input type="password" name="new_password" required minlength="12" /></label>
       <label>Confirm new password <input type="password" name="confirm_password" required minlength="12" /></label>
       <button type="submit">Update Password</button>
     </form>
-  </div>
-  <div class="card">
-    <h3>Security Notes</h3>
-    <p>Right now the AWS panel is running on a temporary public IP over HTTP.</p>
-    <p>Once you attach a real domain, we should re-enable HTTPS-only cookies and switch Caddy to automatic TLS.</p>
-    <p>The admin password now lives in the app database after the first bootstrap, so future password changes happen here instead of only through environment variables.</p>
-  </div>
+  </section>
+  <section class="card">
+    <div class="section-title">
+      <div>
+        <h2>Security Status</h2>
+        <p>Current production hardening checklist.</p>
+      </div>
+    </div>
+    <div class="data-list">
+      <div class="data-row"><div class="data-label">Login</div><div class="data-value"><span class="pill ok">Enabled</span></div></div>
+      <div class="data-row"><div class="data-label">HTTPS</div><div class="data-value"><span class="pill warn">Pending domain</span></div></div>
+      <div class="data-row"><div class="data-label">Session cookies</div><div class="data-value"><span class="pill warn">HTTP compatible</span></div></div>
+      <div class="data-row"><div class="data-label">Password source</div><div class="data-value">Stored in the app database after first bootstrap.</div></div>
+    </div>
+  </section>
 </div>
 {% endblock %}

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from pathlib import Path
+import re
 import sqlite3
 from typing import Any
 
@@ -18,10 +19,12 @@ from config import load_supplier_configs, save_supplier_configs
 from .auth import authenticate_user, change_password, ensure_bootstrap_users
 from .config import WebAppConfig, load_webapp_config
 from .db import connect, init_db
+from .ecs_jobs import count_ecs_stream_matches, read_ecs_task_logs
 from .jobs import JobRunner, build_job_command, get_job, list_jobs, queue_job, tail_file
 from .service import (
     build_supplier_from_form,
     parse_bool_form,
+    read_json_file,
     resolve_allowed_artifact,
     supplier_by_slug,
     supplier_health_summary,
@@ -40,6 +43,112 @@ def require_user(request: Request) -> dict[str, str]:
     if not user:
         raise HTTPException(status_code=401, detail="Authentication required.")
     return user
+
+
+def load_job_logs(job: dict[str, Any], app_config: WebAppConfig) -> tuple[str, str, str]:
+    if job.get("backend") == "ecs_fargate" and job.get("remote_job_id"):
+        try:
+            log_group, log_stream, logs = read_ecs_task_logs(
+                app_config.ecs_backend,
+                task_arn=job["remote_job_id"],
+                log_group=job.get("cloudwatch_log_group", "") or "",
+                log_stream=job.get("cloudwatch_log_stream", "") or "",
+            )
+        except Exception as exc:  # pragma: no cover - defensive path for AWS hiccups
+            fallback = f"Unable to load CloudWatch logs right now: {exc}"
+            return (
+                job.get("cloudwatch_log_group", "") or "",
+                job.get("cloudwatch_log_stream", "") or "",
+                fallback,
+            )
+        return log_group, log_stream, logs
+    if not job.get("log_path"):
+        return job.get("cloudwatch_log_group", "") or "", job.get("cloudwatch_log_stream", "") or "", ""
+    return (
+        job.get("cloudwatch_log_group", "") or "",
+        job.get("cloudwatch_log_stream", "") or "",
+        tail_file(Path(job["log_path"])),
+    )
+
+
+def count_local_log_matches(log_path: str | None, pattern: re.Pattern[str]) -> int:
+    if not log_path:
+        return 0
+    path = Path(log_path)
+    if not path.exists():
+        return 0
+    count = 0
+    with path.open("r", encoding="utf-8", errors="replace") as handle:
+        for line in handle:
+            if pattern.search(line):
+                count += 1
+    return count
+
+
+PARSED_PRODUCT_RE = re.compile(r"\bParsed product\b")
+ERROR_LINE_RE = re.compile(r"\b(ERROR|CRITICAL|Traceback|Exception|FAILED)\b", re.IGNORECASE)
+
+
+def summarize_job_logs(log_text: str) -> str:
+    if not log_text.strip():
+        return "Scraped items: 0"
+
+    lines = [line.rstrip() for line in log_text.splitlines() if line.strip()]
+    scraped_items = sum(1 for line in lines if PARSED_PRODUCT_RE.search(line))
+    error_lines: list[str] = []
+    seen: set[str] = set()
+    for line in lines:
+        if not ERROR_LINE_RE.search(line):
+            continue
+        if line in seen:
+            continue
+        seen.add(line)
+        error_lines.append(line)
+
+    summary_lines = [f"Scraped items: {scraped_items}"]
+    if error_lines:
+        summary_lines.append("")
+        summary_lines.append("Potential errors:")
+        summary_lines.extend(error_lines[-20:])
+    return "\n".join(summary_lines)
+
+
+def build_job_progress(
+    job: dict[str, Any],
+    app_config: WebAppConfig,
+) -> dict[str, Any]:
+    log_group, log_stream, log_tail = load_job_logs(job, app_config)
+    scraped_count = 0
+    if job.get("backend") == "ecs_fargate" and job.get("remote_job_id"):
+        try:
+            scraped_count = count_ecs_stream_matches(
+                app_config.ecs_backend,
+                task_arn=job["remote_job_id"],
+                log_group=log_group,
+                log_stream=log_stream,
+            )
+        except Exception:
+            scraped_count = 0
+    else:
+        scraped_count = count_local_log_matches(job.get("log_path"), PARSED_PRODUCT_RE)
+
+    error_lines = []
+    seen: set[str] = set()
+    for line in log_tail.splitlines():
+        if not ERROR_LINE_RE.search(line):
+            continue
+        if line in seen:
+            continue
+        seen.add(line)
+        error_lines.append(line)
+
+    return {
+        "scraped_count": scraped_count,
+        "errors": error_lines[-10:],
+        "log_group": log_group,
+        "log_stream": log_stream,
+        "log_tail": log_tail,
+    }
 
 
 def create_app(config_path: Path | None = None) -> FastAPI:
@@ -293,6 +402,7 @@ def create_app(config_path: Path | None = None) -> FastAPI:
         base_url: str = Form(...),
         ybm_token_env_var: str = Form(...),
         output_dir: str = Form(...),
+        catalog_update_policy: str = Form("delete_missing"),
         ybm_api_base: str = Form("https://connect.yourbarmate.com/api"),
         schedule_enabled: str | None = Form(None),
         schedule_frequency: str = Form("weekly"),
@@ -312,6 +422,7 @@ def create_app(config_path: Path | None = None) -> FastAPI:
                     "base_url": base_url,
                     "ybm_token_env_var": ybm_token_env_var,
                     "output_dir": output_dir,
+                    "catalog_update_policy": catalog_update_policy,
                     "ybm_api_base": ybm_api_base,
                     "schedule_enabled": parse_bool_form(schedule_enabled),
                     "schedule_frequency": schedule_frequency,
@@ -341,6 +452,7 @@ def create_app(config_path: Path | None = None) -> FastAPI:
         base_url: str = Form(...),
         ybm_token_env_var: str = Form(...),
         output_dir: str = Form(...),
+        catalog_update_policy: str = Form("delete_missing"),
         ybm_api_base: str = Form("https://connect.yourbarmate.com/api"),
         schedule_enabled: str | None = Form(None),
         schedule_frequency: str = Form("weekly"),
@@ -360,6 +472,7 @@ def create_app(config_path: Path | None = None) -> FastAPI:
                     "base_url": base_url,
                     "ybm_token_env_var": ybm_token_env_var,
                     "output_dir": output_dir,
+                    "catalog_update_policy": catalog_update_policy,
                     "ybm_api_base": ybm_api_base,
                     "schedule_enabled": parse_bool_form(schedule_enabled),
                     "schedule_frequency": schedule_frequency,
@@ -390,11 +503,46 @@ def create_app(config_path: Path | None = None) -> FastAPI:
         job = get_job(conn, job_id)
         if job is None:
             raise HTTPException(status_code=404, detail="Job not found.")
-        log_tail = tail_file(Path(job["log_path"])) if job.get("log_path") else ""
+        progress = build_job_progress(job, app_config)
+        if progress["log_group"]:
+            job["cloudwatch_log_group"] = progress["log_group"]
+        if progress["log_stream"]:
+            job["cloudwatch_log_stream"] = progress["log_stream"]
+        run_summary = read_json_file(Path(job["run_summary_path"])) if job.get("run_summary_path") else {}
+        sync_report = read_json_file(Path(job["sync_report_path"])) if job.get("sync_report_path") else {}
         return templates.TemplateResponse(
             request,
             "job_detail.html",
-            template_context(request, job=job, log_tail=log_tail),
+            template_context(
+                request,
+                job=job,
+                scraped_count=progress["scraped_count"],
+                errors=progress["errors"],
+                run_summary=run_summary,
+                sync_report=sync_report,
+                notice=request.query_params.get("notice", ""),
+                error=request.query_params.get("error", ""),
+            ),
+        )
+
+    @app.post("/jobs/{job_id}/stop")
+    def stop_job(
+        job_id: int,
+        request: Request,
+        _: dict[str, str] = Depends(require_user),
+    ) -> RedirectResponse:
+        try:
+            job_runner.stop_job(job_id)
+        except KeyError:
+            raise HTTPException(status_code=404, detail="Job not found.")
+        except Exception as exc:
+            return RedirectResponse(
+                f"/jobs/{job_id}?error={str(exc).replace(' ', '+')}",
+                status_code=302,
+            )
+        return RedirectResponse(
+            f"/jobs/{job_id}?notice=Stop+requested.",
+            status_code=302,
         )
 
     @app.get("/system", response_class=HTMLResponse)
@@ -463,11 +611,19 @@ def create_app(config_path: Path | None = None) -> FastAPI:
             )
         except ValueError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
-        return JSONResponse({"job_id": job_id, "status": "queued"}, status_code=202)
+        return JSONResponse({"job_id": job_id, "job_type": job_type, "status": "queued"}, status_code=202)
 
     @app.post("/api/suppliers/{supplier_slug}/jobs/dry-run")
     def api_queue_dry_run(supplier_slug: str, request: Request) -> JSONResponse:
         return _queue_supplier_job(supplier_slug, "scrape_dry_run", request)
+
+    @app.post("/api/suppliers/{supplier_slug}/jobs/scrape")
+    def api_queue_scrape_only(supplier_slug: str, request: Request) -> JSONResponse:
+        require_user(request)
+        raise HTTPException(
+            status_code=410,
+            detail="Separate Scrape runs have been removed. Use Scrape + Sync instead.",
+        )
 
     @app.post("/api/suppliers/{supplier_slug}/jobs/run-sync")
     def api_queue_run_sync(supplier_slug: str, request: Request) -> JSONResponse:
@@ -475,7 +631,11 @@ def create_app(config_path: Path | None = None) -> FastAPI:
 
     @app.post("/api/suppliers/{supplier_slug}/jobs/sync-from-export")
     def api_queue_sync_from_export(supplier_slug: str, request: Request) -> JSONResponse:
-        return _queue_supplier_job(supplier_slug, "sync_from_export", request)
+        require_user(request)
+        raise HTTPException(
+            status_code=410,
+            detail="Separate Sync runs have been removed. Use Scrape + Sync instead.",
+        )
 
     @app.get("/api/jobs")
     def api_jobs(
@@ -498,11 +658,13 @@ def create_app(config_path: Path | None = None) -> FastAPI:
         job = get_job(conn, job_id)
         if job is None:
             raise HTTPException(status_code=404, detail="Job not found.")
-        if not job.get("log_path"):
-            return {"job_id": job_id, "logs": ""}
+        progress = build_job_progress(job, app_config)
         return {
             "job_id": job_id,
-            "logs": tail_file(Path(job["log_path"])),
+            "scraped_count": progress["scraped_count"],
+            "errors": progress["errors"],
+            "cloudwatch_log_group": progress["log_group"],
+            "cloudwatch_log_stream": progress["log_stream"],
         }
 
     @app.get("/artifacts")

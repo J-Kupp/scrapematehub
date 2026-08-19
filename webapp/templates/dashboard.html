@@ -1,54 +1,99 @@
 {% extends "base.html" %}
 {% block header %}
-<div class="hero">
+<div class="page-header">
   <div>
-    <h1>Supplier Dashboard</h1>
-    <p class="muted">Run scrapers, watch sync health, and manage supplier onboarding from one clean operations cockpit inspired by the YourBarMate product language.</p>
+    <h1>Dashboard</h1>
+    <p>Supplier status, latest job health, and quick run actions.</p>
   </div>
   <div class="actions">
-    <a class="button-link secondary" href="/suppliers/new">Add Supplier</a>
-    <a class="button-link ghost" href="/system">View System Health</a>
+    <a class="button-link" href="/suppliers/new">Add Supplier</a>
+    <a class="button-link secondary" href="/connections">Review Onboarding</a>
   </div>
 </div>
 {% endblock %}
 {% block content %}
-<div class="card" style="margin-bottom:16px;">
-  <div class="subgrid">
-    <div class="metric"><span class="muted tiny">Configured suppliers</span><strong>{{ suppliers|length }}</strong></div>
-    <div class="metric"><span class="muted tiny">Adapters available in code</span><strong>{{ available_adapters|length }}</strong></div>
-    <div class="metric"><span class="muted tiny">Secrets configured</span><strong>{{ suppliers | selectattr('secret_present') | list | length }}</strong></div>
-    <div class="metric"><span class="muted tiny">Suppliers needing setup</span><strong>{{ suppliers | rejectattr('secret_present') | list | length }}</strong></div>
+<div class="summary-grid">
+  <div class="stat">
+    <span class="stat-label">Suppliers</span>
+    <span class="stat-value">{{ suppliers|length }}</span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">Live</span>
+    <span class="stat-value">{{ suppliers | selectattr('onboarding.live') | list | length }}</span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">Secrets ready</span>
+    <span class="stat-value">{{ suppliers | selectattr('secret_present') | list | length }}</span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">Need attention</span>
+    <span class="stat-value">{{ suppliers | rejectattr('onboarding.live') | list | length }}</span>
   </div>
 </div>
+
 <div class="grid cols-2">
   {% for supplier in suppliers %}
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;gap:12px;">
+  <section class="card">
+    <div class="section-title">
       <div>
-        <h2 style="margin:0 0 6px 0;"><a href="/suppliers/{{ supplier.supplier_slug }}">{{ supplier.supplier_slug }}</a></h2>
-        <div class="muted">{{ supplier.adapter }} • {{ supplier.base_url }}</div>
+        <h2><a href="/suppliers/{{ supplier.supplier_slug }}">{{ supplier.supplier_slug }}</a></h2>
+        <p>{{ supplier.adapter }} · {{ supplier.next_run_display }}</p>
       </div>
-      <div class="pill {{ 'ok' if supplier.enabled else 'warn' }}">{{ "enabled" if supplier.enabled else "disabled" }}</div>
+      <span class="pill {{ 'ok' if supplier.enabled else 'warn' }}">{{ "Enabled" if supplier.enabled else "Disabled" }}</span>
     </div>
-    <p style="margin:14px 0 6px;"><span class="pill {{ 'ok' if supplier.onboarding.live else ('warn' if supplier.onboarding.stage != 'Config only' else 'bad') }}">{{ supplier.onboarding.stage }}</span></p>
-    <div style="margin:14px 0 4px; color:#243041; font-weight:700;">{{ supplier.next_run_display }}</div>
-    <div class="subgrid" style="margin:14px 0;">
-      <div class="metric"><span class="muted tiny">Products</span><strong>{{ supplier.product_count }}</strong></div>
-      <div class="metric"><span class="muted tiny">Validation</span><strong>{{ supplier.validation_error_count }}</strong><span class="muted tiny">errors, {{ supplier.validation_warning_count }} warnings</span></div>
+
+    <div class="summary-grid" style="grid-template-columns:repeat(3,minmax(0,1fr)); margin-bottom:14px;">
+      <div class="panel-flat">
+        <div class="stat-label">Products</div>
+        <div class="stat-value">{{ supplier.product_count }}</div>
+      </div>
+      <div class="panel-flat">
+        <div class="stat-label">Validation</div>
+        <div class="stat-value">{{ supplier.validation_error_count }}</div>
+        <div class="muted tiny">{{ supplier.validation_warning_count }} warnings</div>
+      </div>
+      <div class="panel-flat">
+        <div class="stat-label">Latest job</div>
+        <div><span class="pill">{{ supplier.latest_job.status if supplier.latest_job else "None" }}</span></div>
+      </div>
     </div>
-    <p class="{{ 'status-ok' if supplier.secret_present else 'status-bad' }}">API connection: {{ "configured" if supplier.secret_present else "missing secret" }}</p>
-    <p class="{{ 'status-ok' if supplier.adapter_available else 'status-warn' }}">Adapter: {{ "implemented" if supplier.adapter_available else "config only" }}</p>
-    <p>Last sync: created {{ supplier.last_sync_summary.get('created_products', 0) }}, updated {{ supplier.last_sync_summary.get('updated_products', 0) }}, unchanged {{ supplier.last_sync_summary.get('unchanged_products', 0) }}</p>
-    <p>Latest job: <span class="pill">{{ supplier.latest_job.status if supplier.latest_job else "none" }}</span></p>
-    <div class="actions">
-      <button onclick="queueJob('{{ supplier.supplier_slug }}','dry-run')">Dry Run</button>
-      <button onclick="queueJob('{{ supplier.supplier_slug }}','run-sync')">Run Scrape + Sync</button>
-      <button class="secondary" onclick="queueJob('{{ supplier.supplier_slug }}','sync-from-export')">Sync Latest Export</button>
-      <a class="button-link ghost" href="/suppliers/{{ supplier.supplier_slug }}/edit">Edit Config</a>
+
+    <div class="data-list">
+      <div class="data-row">
+        <div class="data-label">Readiness</div>
+        <div class="data-value"><span class="pill {{ 'ok' if supplier.onboarding.live else ('warn' if supplier.onboarding.stage != 'Config only' else 'bad') }}">{{ supplier.onboarding.stage }}</span></div>
+      </div>
+      <div class="data-row">
+        <div class="data-label">Connection</div>
+        <div class="data-value">
+          <span class="pill {{ 'ok' if supplier.secret_present else 'bad' }}">{{ "Secret configured" if supplier.secret_present else "Missing secret" }}</span>
+          <span class="pill {{ 'ok' if supplier.adapter_available else 'warn' }}">{{ "Adapter ready" if supplier.adapter_available else "Code pending" }}</span>
+        </div>
+      </div>
+      <div class="data-row">
+        <div class="data-label">Last sync</div>
+        <div class="data-value">
+          Created {{ supplier.last_sync_summary.get('created_products', 0) }},
+          updated {{ supplier.last_sync_summary.get('updated_products', 0) }},
+          unchanged {{ supplier.last_sync_summary.get('unchanged_products', 0) }}
+        </div>
+      </div>
     </div>
-  </div>
+
+    <div class="actions" style="margin-top:16px;">
+      <button onclick="queueJob('{{ supplier.supplier_slug }}','run-sync')">Scrape + Sync</button>
+      <a class="button-link ghost" href="/suppliers/{{ supplier.supplier_slug }}">Details</a>
+    </div>
+  </section>
+  {% else %}
+  <section class="card">
+    <h2>No suppliers configured</h2>
+    <p class="soft">Create the first supplier to start onboarding scraper code, secrets, schedules, and sync checks.</p>
+    <a class="button-link" href="/suppliers/new">Add Supplier</a>
+  </section>
   {% endfor %}
 </div>
+
 <script>
 async function queueJob(slug, action) {
   const response = await fetch(`/api/suppliers/${slug}/jobs/${action}`, {method: 'POST'});

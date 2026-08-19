@@ -1,46 +1,267 @@
 {% extends "base.html" %}
 {% block header %}
-<div class="hero">
+<div class="page-header">
   <div>
     <h1>Job #{{ job.id }}</h1>
-    <p class="muted">{{ job.supplier_slug }} • {{ job.job_type }}</p>
+    <p>{{ job.supplier_slug }} · {{ job_type_label }}</p>
+  </div>
+  <div class="actions">
+    <a class="button-link secondary" href="/suppliers/{{ job.supplier_slug }}">Supplier</a>
+    {% if job.status in ["queued", "running"] %}
+    <form class="inline" method="post" action="/jobs/{{ job.id }}/stop" onsubmit="return confirm('Stop this job?');">
+      <button class="danger" type="submit">{{ "Stopping..." if job.stop_requested_at else "Stop Job" }}</button>
+    </form>
+    {% endif %}
   </div>
 </div>
 {% endblock %}
 {% block content %}
-<div class="grid cols-2">
-  <div class="card">
-    <h3>Metadata</h3>
-    <p>Status: <strong>{{ job.status }}</strong></p>
-    <p>Backend: <strong>{{ job.backend or "local_subprocess" }}</strong></p>
-    <p>Requested by: {{ job.requested_by }}</p>
-    <p>Requested at: {{ job.requested_at }}</p>
-    <p>Started at: {{ job.started_at or "n/a" }}</p>
-    <p>Finished at: {{ job.finished_at or "n/a" }}</p>
-    <p>Exit code: {{ job.exit_code if job.exit_code is not none else "n/a" }}</p>
-    {% if job.remote_job_id %}<p>ECS task: <span class="muted tiny">{{ job.remote_job_id }}</span></p>{% endif %}
-    {% if job.remote_status %}<p>Remote status: <strong>{{ job.remote_status }}</strong></p>{% endif %}
-    {% if job.cloudwatch_log_group %}<p>CloudWatch group: <span class="muted tiny">{{ job.cloudwatch_log_group }}</span></p>{% endif %}
-    {% if job.cloudwatch_log_stream %}<p>CloudWatch stream: <span class="muted tiny">{{ job.cloudwatch_log_stream }}</span></p>{% endif %}
-    {% if job.artifact_prefix %}<p>Artifact prefix: <span class="muted tiny">{{ job.artifact_prefix }}</span></p>{% endif %}
-    {% if job.run_summary_path %}<p><a href="/artifacts?path={{ job.run_summary_path | urlencode }}">Run summary</a></p>{% endif %}
-    {% if job.sync_report_path %}<p><a href="/artifacts?path={{ job.sync_report_path | urlencode }}">Sync report</a></p>{% endif %}
-    {% if job.log_path %}<p><a href="/artifacts?path={{ job.log_path | urlencode }}">Full job log</a></p>{% endif %}
-    {% if job.error_message %}<p class="status-bad">{{ job.error_message }}</p>{% endif %}
+{% set job_type_label = {
+  'scrape_only': 'Scrape',
+  'scrape_dry_run': 'Dry Run',
+  'scrape_and_sync': 'Scrape + Sync',
+  'sync_from_export': 'Sync'
+}[job.job_type] if job.job_type in ['scrape_only', 'scrape_dry_run', 'scrape_and_sync', 'sync_from_export'] else job.job_type %}
+{% set scrape_stage = run_summary.get('stages', {}).get('scrape', {}) %}
+{% set validation_stage = run_summary.get('stages', {}).get('validation', run_summary.get('validation', {})) %}
+{% set sync_stage = run_summary.get('stages', {}).get('sync', {}) %}
+{% if notice %}<div class="notice">{{ notice }}</div>{% endif %}
+{% if error %}<div class="error">{{ error }}</div>{% endif %}
+
+<div class="summary-grid">
+  <div class="stat">
+    <span class="stat-label">Status</span>
+    <span><span class="pill {{ 'ok' if job.status == 'succeeded' else ('bad' if job.status == 'failed' else ('warn' if job.status in ['running','queued'] else '')) }}" id="job-status">{{ job.status }}</span></span>
   </div>
-  <div class="card">
-    <h3>Recent Logs</h3>
-    <pre id="log-tail">{{ log_tail }}</pre>
+  <div class="stat">
+    <span class="stat-label">Remote</span>
+    <span><span class="pill" id="remote-status">{{ job.remote_status or "n/a" }}</span></span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">Backend</span>
+    <span class="soft">{{ job.backend or "local_subprocess" }}</span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">Exit code</span>
+    <span class="stat-value" id="exit-code">{{ job.exit_code if job.exit_code is not none else "n/a" }}</span>
   </div>
 </div>
+
+<div class="grid cols-2">
+  <section class="card">
+    <div class="section-title">
+      <div>
+        <h2>Progress</h2>
+        <p>Live scrape counter and sync trouble signals while the job is running.</p>
+      </div>
+    </div>
+    <div class="summary-grid" style="grid-template-columns:repeat(2,minmax(0,1fr));">
+      <div class="panel-flat">
+        <div class="metric-value" id="scraped-count">{{ scraped_count or scrape_stage.get('product_count', 0) or 0 }}</div>
+        <div class="metric-label">Items scraped</div>
+      </div>
+      <div class="panel-flat">
+        <div class="metric-value" id="uploaded-count">{{ sync_stage.get('uploaded_products', 0) or 0 }}</div>
+        <div class="metric-label">Items uploaded</div>
+      </div>
+    </div>
+    <div class="summary-grid" style="grid-template-columns:repeat(2,minmax(0,1fr)); margin-top:14px;">
+      <div class="panel-flat">
+        <div class="metric-value" id="validated-count">{{ validation_stage.get('passed_row_count', 0) if validation_stage.get('performed') else 0 }}</div>
+        <div class="metric-label">Passed validation</div>
+      </div>
+      <div class="panel-flat">
+        <div class="metric-value" id="error-count">{{ (errors|length) if errors else (sync_stage.get('errors', [])|length + validation_stage.get('errors', [])|length) }}</div>
+        <div class="metric-label">Errors detected</div>
+      </div>
+    </div>
+    <div class="error-box" id="error-box"{% if not errors and not validation_stage.get('errors') and not sync_stage.get('errors') %} style="display:none"{% endif %}>
+      <div class="error-title">Potential errors</div>
+      <pre id="error-lines">{% if errors %}{{ errors | join("\n") }}{% elif validation_stage.get('errors') %}{{ validation_stage.get('errors') | join("\n") }}{% elif sync_stage.get('errors') %}{{ sync_stage.get('errors') | join("\n") }}{% endif %}</pre>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="section-title">
+      <div>
+        <h2>Run Details</h2>
+        <p>Timing, requester, and artifacts.</p>
+      </div>
+    </div>
+    <div class="data-list">
+      <div class="data-row"><div class="data-label">Requested by</div><div class="data-value">{{ job.requested_by }}</div></div>
+      <div class="data-row"><div class="data-label">Requested</div><div class="data-value">{{ job.requested_at }}</div></div>
+      <div class="data-row"><div class="data-label">Started</div><div class="data-value">{{ job.started_at or "n/a" }}</div></div>
+      <div class="data-row"><div class="data-label">Finished</div><div class="data-value">{{ job.finished_at or "n/a" }}</div></div>
+      {% if job.stop_requested_at %}<div class="data-row"><div class="data-label">Stop requested</div><div class="data-value status-warn">{{ job.stop_requested_at }}</div></div>{% endif %}
+      {% if job.error_message %}<div class="data-row"><div class="data-label">Message</div><div class="data-value status-bad">{{ job.error_message }}</div></div>{% endif %}
+    </div>
+    <div class="actions" style="margin-top:14px;">
+      {% if job.run_summary_path %}<a class="button-link ghost" href="/artifacts?path={{ job.run_summary_path | urlencode }}">Run Summary</a>{% endif %}
+      {% if job.sync_report_path %}<a class="button-link ghost" href="/artifacts?path={{ job.sync_report_path | urlencode }}">Sync Report</a>{% endif %}
+      {% if job.log_path %}<a class="button-link ghost" href="/artifacts?path={{ job.log_path | urlencode }}">Full Log</a>{% endif %}
+    </div>
+  </section>
+</div>
+
+<section class="card" style="margin-top:14px;">
+  <div class="section-title">
+    <div>
+      <h2>Stage Summary</h2>
+      <p>Separated scrape, validation, and upload outcomes for this run.</p>
+    </div>
+  </div>
+  <div class="summary-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));">
+    <div class="panel-flat">
+      <div class="stat-label">Scrape</div>
+      <div class="stat-value">{{ scrape_stage.get('product_count', 0) }}</div>
+      <div class="muted tiny">
+        {{ scrape_stage.get('raw_record_count', 0) }} raw ·
+        {{ scrape_stage.get('interpreted_record_count', 0) }} transformed ·
+        {{ scrape_stage.get('failure_count', 0) }} failures
+      </div>
+    </div>
+    <div class="panel-flat">
+      <div class="stat-label">Validation</div>
+      <div class="stat-value">{{ validation_stage.get('passed_row_count', 0) if validation_stage.get('performed') else "Not run" }}</div>
+      <div class="muted tiny">
+        {% if validation_stage.get('performed') %}
+        {{ validation_stage.get('row_count', 0) }} checked ·
+        {{ validation_stage.get('warning_count', 0) }} warnings ·
+        {{ validation_stage.get('error_count', 0) }} errors
+        {% else %}
+        Validation is skipped for scrape-only runs.
+        {% endif %}
+      </div>
+    </div>
+    <div class="panel-flat">
+      <div class="stat-label">Sync</div>
+      <div class="stat-value">
+        {% if sync_stage.get('performed') %}
+        {{ sync_stage.get('uploaded_products', 0) }}
+        {% else %}
+        Not run
+        {% endif %}
+      </div>
+      <div class="muted tiny">
+        {% if sync_stage.get('performed') %}
+        {{ sync_stage.get('old_catalog_products', 0) }} old in catalog ·
+        {{ sync_stage.get('created_products', 0) }} created ·
+        {{ sync_stage.get('updated_products', 0) }} updated ·
+        {{ sync_stage.get('unchanged_products', 0) }} unchanged
+        {% else %}
+        Sync is skipped for scrape-only runs.
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="data-list" style="margin-top:16px;">
+    <div class="data-row">
+      <div class="data-label">Run mode</div>
+      <div class="data-value">{{ job_type_label }}</div>
+    </div>
+    <div class="data-row">
+      <div class="data-label">Coverage</div>
+      <div class="data-value">
+        {{ scrape_stage.get('covered_product_url_count', run_summary.get('covered_product_url_count', 0)) }}
+        of
+        {{ scrape_stage.get('discovered_product_url_count', run_summary.get('discovered_product_url_count', 0)) }}
+        discovered product URLs covered
+      </div>
+    </div>
+    <div class="data-row">
+      <div class="data-label">Validation status</div>
+      <div class="data-value">
+        {% if validation_stage.get('performed') %}
+        <span class="pill {{ 'ok' if validation_stage.get('error_count', 0) == 0 else 'bad' }}">
+          {{ "Passed" if validation_stage.get('error_count', 0) == 0 else "Failed" }}
+        </span>
+        {% else %}
+        <span class="pill">Skipped</span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="data-row">
+      <div class="data-label">Sync status</div>
+      <div class="data-value">
+        {% if sync_stage.get('performed') %}
+        <span class="pill {{ 'ok' if not sync_stage.get('aborted') and not sync_stage.get('errors') else 'bad' }}">
+          {{ "Completed" if not sync_stage.get('aborted') and not sync_stage.get('errors') else "Needs attention" }}
+        </span>
+        {% if sync_stage.get('dry_run') %}<span class="pill">Dry run</span>{% endif %}
+        {% else %}
+        <span class="pill">Skipped</span>
+        {% endif %}
+      </div>
+    </div>
+    {% if sync_stage.get('reason') %}
+    <div class="data-row">
+      <div class="data-label">Sync reason</div>
+      <div class="data-value">{{ sync_stage.get('reason') }}</div>
+    </div>
+    {% endif %}
+    {% if sync_stage.get('error') %}
+    <div class="data-row">
+      <div class="data-label">Sync error</div>
+      <div class="data-value status-bad">{{ sync_stage.get('error') }}</div>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+<section class="card" style="margin-top:14px;">
+  <div class="section-title">
+    <div>
+      <h2>Technical Metadata</h2>
+      <p>Useful when debugging ECS, CloudWatch, or artifact routing.</p>
+    </div>
+  </div>
+  <div class="data-list">
+    {% if job.remote_job_id %}<div class="data-row"><div class="data-label">ECS task</div><div class="data-value truncate mono tiny" id="remote-job-id">{{ job.remote_job_id }}</div></div>{% endif %}
+    {% if job.cloudwatch_log_group %}<div class="data-row"><div class="data-label">Log group</div><div class="data-value truncate mono tiny" id="cloudwatch-log-group">{{ job.cloudwatch_log_group }}</div></div>{% endif %}
+    {% if job.cloudwatch_log_stream %}<div class="data-row"><div class="data-label">Log stream</div><div class="data-value truncate mono tiny" id="cloudwatch-log-stream">{{ job.cloudwatch_log_stream }}</div></div>{% endif %}
+    {% if job.artifact_prefix %}<div class="data-row"><div class="data-label">Artifact prefix</div><div class="data-value truncate mono tiny">{{ job.artifact_prefix }}</div></div>{% endif %}
+  </div>
+</section>
+
 <script>
 async function poll() {
   const jobResponse = await fetch('/api/jobs/{{ job.id }}');
   const job = await jobResponse.json();
+  const statusEl = document.getElementById('job-status');
+  if (statusEl && job.status) {
+    statusEl.textContent = job.status;
+  }
+  if (document.getElementById('remote-status')) {
+    document.getElementById('remote-status').textContent = job.remote_status || 'n/a';
+  }
+  if (document.getElementById('exit-code') && job.exit_code !== null) {
+    document.getElementById('exit-code').textContent = job.exit_code;
+  }
   if (job.status === 'running' || job.status === 'queued') {
     const logResponse = await fetch('/api/jobs/{{ job.id }}/logs');
-    const logs = await logResponse.json();
-    document.getElementById('log-tail').textContent = logs.logs || '';
+    const progress = await logResponse.json();
+    if (document.getElementById('scraped-count')) {
+      document.getElementById('scraped-count').textContent = progress.scraped_count ?? 0;
+    }
+    if (document.getElementById('error-box')) {
+      if (progress.errors && progress.errors.length) {
+        document.getElementById('error-box').style.display = 'block';
+        document.getElementById('error-lines').textContent = progress.errors.join('\n');
+      } else {
+        document.getElementById('error-box').style.display = 'none';
+      }
+    }
+    if (document.getElementById('error-count')) {
+      document.getElementById('error-count').textContent = progress.errors ? progress.errors.length : 0;
+    }
+    if (document.getElementById('cloudwatch-log-group') && progress.cloudwatch_log_group) {
+      document.getElementById('cloudwatch-log-group').textContent = progress.cloudwatch_log_group;
+    }
+    if (document.getElementById('cloudwatch-log-stream') && progress.cloudwatch_log_stream) {
+      document.getElementById('cloudwatch-log-stream').textContent = progress.cloudwatch_log_stream;
+    }
     setTimeout(poll, 3000);
   }
 }

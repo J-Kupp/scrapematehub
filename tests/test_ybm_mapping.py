@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 
 from models import NormalizedProduct
-from ybm import build_category_id, build_category_name_map, build_product_id, map_product_to_ybm
+from ybm import build_category_id, build_category_name_map, build_product_id, map_product_to_ybm, map_row_to_ybm
 
 
 class YbmMappingTests(unittest.TestCase):
@@ -82,6 +82,59 @@ class YbmMappingTests(unittest.TestCase):
             ]
         )
         self.assertNotEqual(mapping["A > Shared"], mapping["B > Shared"])
+
+    def test_row_mapping_skips_invalid_bundle_and_fractional_gram_vessel(self) -> None:
+        row = {
+            "Category name": "Trockenprodukte",
+            "Category ID": "",
+            "Item ID": "505825",
+            "Item name": "Natura Eisenkrauttee Bio 100x1.5g",
+            "Order by": "vessel",
+            "Vessel size": "1.5",
+            "Vessel unit": "g",
+            "Vessel type": "CT",
+            "Bundle size": "1.333",
+            "Bundle type": "CT",
+            "Bundle GTIN": "",
+            "Price": "0.15",
+            "Price per": "vessel",
+            "Minimum order count": "1",
+            "Status": "ACTIVE",
+            "Image": "",
+            "GTIN": "",
+            "Labels": "",
+            "Description": "",
+            "Manufacturer": "",
+            "Brand": "",
+            "Region": "",
+            "Country": "",
+            "Vintage": "",
+            "Ingredients": "",
+            "Allergens": "",
+            "Storage advice": "",
+            "Nutritional values": "",
+            "Dietary labels": "",
+            "Alcohol content": "",
+            "Color": "",
+            "Grape variety": "",
+            "Wine-making": "",
+            "Material": "",
+            "Fishing method": "",
+            "Length": "",
+            "Width": "",
+            "Height": "",
+            "Diameter": "",
+            "Net weight": "",
+            "Total weight": "",
+            "VAT": "",
+            "Product Sheet": "",
+            "Name FR": "",
+            "Name IT": "",
+            "Name EN": "",
+        }
+        payload = map_row_to_ybm(row, "swissbox")
+        self.assertNotIn("vessel", payload)
+        self.assertNotIn("bundles", payload)
 
 
 if __name__ == "__main__":

@@ -23,6 +23,7 @@ Shared platform areas:
 - `core/`: shared contracts and platform re-export modules
 - `ybm.py`: YourBarMate ID mapping, payload mapping, API client, and sync logic
 - `webapp/`: FastAPI control panel, onboarding views, queue, settings, and artifact access
+- ECS/Fargate worker jobs currently run at `4 vCPU / 8 GB` to keep browser scraping responsive while still being on-demand
 
 Supplier code areas:
 - `adapters/base.py`: supplier adapter interface
@@ -344,6 +345,12 @@ The repo now includes:
 - `.github/workflows/deploy.yml`: rerun tests on `main`, sync the repo to EC2, restart the app service, and verify `/healthz`
 - `deploy/aws/deploy-from-git.sh`: remote deploy helper used by the EC2 host
 
+The deploy helper now also writes release metadata into the control-panel state directory so the System page can show:
+- deployed revision
+- deploy timestamp
+- deploy source
+- host name
+
 Expected GitHub Actions secrets:
 - `EC2_HOST`
 - `EC2_USER`
@@ -381,6 +388,7 @@ What is implemented now:
 - control plane can be configured for `local_subprocess` or `ecs_fargate`
 - job rows store backend, remote task id, remote status, and artifact prefix
 - system page shows the configured execution backend
+- system page reports ECS runtime readiness, including STS identity and task-definition lookup status
 - ECS task launch and polling helpers exist for Fargate mode
 - worker image can be built from `Dockerfile.worker`
 - GitHub Actions can publish the worker image to ECR

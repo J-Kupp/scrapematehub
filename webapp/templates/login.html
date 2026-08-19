@@ -1,19 +1,25 @@
 {% extends "base.html" %}
 {% block header %}
-<div class="hero">
+<div class="page-header">
   <div>
     <h1>Supplier Control Panel</h1>
-    <p class="muted">Internal access for scraper and sync operations.</p>
+    <p>Sign in to manage supplier scrapes, schedules, and syncs.</p>
   </div>
 </div>
 {% endblock %}
 {% block content %}
-<div class="card" style="max-width:420px;margin:40px auto;">
+<section class="card" style="max-width:440px;">
+  <div class="section-title">
+    <div>
+      <h2>Sign in</h2>
+      <p>Internal access for YourBarMate operations.</p>
+    </div>
+  </div>
   <form method="post" action="/login">
-    <label>Username <input type="text" name="username" required /></label>
-    <label>Password <input type="password" name="password" required /></label>
+    <label>Username <input type="text" name="username" required autocomplete="username" /></label>
+    <label>Password <input type="password" name="password" required autocomplete="current-password" /></label>
     <button type="submit">Sign in</button>
   </form>
-  {% if error %}<div class="error">{{ error }}</div>{% endif %}
-</div>
+  {% if error %}<div class="error" style="margin-top:14px;">{{ error }}</div>{% endif %}
+</section>
 {% endblock %}

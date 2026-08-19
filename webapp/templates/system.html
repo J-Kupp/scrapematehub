@@ -1,54 +1,119 @@
 {% extends "base.html" %}
 {% block header %}
-<div class="hero">
+<div class="page-header">
   <div>
-    <h1>System Health</h1>
-    <p class="muted">Runtime configuration, scheduler state, filesystem health, and deployment readiness in the same visual language as the main supplier cockpit.</p>
+    <h1>System</h1>
+    <p>Runtime health, deployment metadata, and worker readiness.</p>
   </div>
 </div>
 {% endblock %}
 {% block content %}
-<div class="card" style="margin-bottom:16px;">
-  <div class="subgrid">
-    <div class="metric"><span class="muted tiny">Configured suppliers</span><strong>{{ supplier_count }}</strong></div>
-    <div class="metric"><span class="muted tiny">Scheduler</span><strong>{{ "On" if health.scheduler_enabled else "Off" }}</strong><span class="muted tiny">{{ health.scheduler_mode }}</span></div>
-    <div class="metric"><span class="muted tiny">Adapters in code</span><strong>{{ health.available_adapters|length }}</strong></div>
+<div class="summary-grid">
+  <div class="stat">
+    <span class="stat-label">Suppliers</span>
+    <span class="stat-value">{{ supplier_count }}</span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">Scheduler</span>
+    <span><span class="pill {{ 'ok' if health.scheduler_enabled else 'warn' }}">{{ "On" if health.scheduler_enabled else "Off" }}</span></span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">Execution</span>
+    <span class="soft">{{ health.job_backend }}</span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">ECS ready</span>
+    <span><span class="pill {{ 'ok' if health.ecs_runtime_status.credentials_ok and health.ecs_runtime_status.task_definition_ok else 'bad' }}">{{ "Ready" if health.ecs_runtime_status.credentials_ok and health.ecs_runtime_status.task_definition_ok else "Attention" }}</span></span>
   </div>
 </div>
+
 <div class="grid cols-2">
-  <div class="card">
-    <h3>Runtime</h3>
-    <p>Scheduler enabled: <strong>{{ health.scheduler_enabled }}</strong></p>
-    <p>Scheduler mode: <strong>{{ health.scheduler_mode }}</strong></p>
-    <p>Execution backend: <strong>{{ health.job_backend }}</strong></p>
-    <p>Database: <span class="muted">{{ health.db_path }}</span></p>
-    <p>Env file: <span class="muted">{{ health.env_file }}</span></p>
-    <p>Shared secrets backend: <span class="muted">{{ health.shared_secrets_backend or "disabled" }}</span></p>
-    <p>Secrets manager ID: <span class="muted">{{ health.shared_secrets_secret_id or "n/a" }}</span></p>
-  </div>
-  <div class="card">
-    <h3>Artifact Roots</h3>
+  <section class="card">
+    <div class="section-title">
+      <div>
+        <h2>Runtime</h2>
+        <p>Control-panel process and local persistence.</p>
+      </div>
+    </div>
+    <div class="data-list">
+      <div class="data-row"><div class="data-label">Scheduler mode</div><div class="data-value">{{ health.scheduler_mode }}</div></div>
+      <div class="data-row"><div class="data-label">Database</div><div class="data-value truncate mono tiny">{{ health.db_path }}</div></div>
+      <div class="data-row"><div class="data-label">Env file</div><div class="data-value truncate mono tiny">{{ health.env_file }}</div></div>
+      <div class="data-row"><div class="data-label">Secrets backend</div><div class="data-value">{{ health.shared_secrets_backend or "disabled" }}</div></div>
+      <div class="data-row"><div class="data-label">Secrets ID</div><div class="data-value truncate mono tiny">{{ health.shared_secrets_secret_id or "n/a" }}</div></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="section-title">
+      <div>
+        <h2>ECS Worker</h2>
+        <p>Fargate worker launch readiness.</p>
+      </div>
+    </div>
+    <div class="data-list">
+      <div class="data-row"><div class="data-label">Region</div><div class="data-value">{{ health.ecs_backend.region or "not configured" }}</div></div>
+      <div class="data-row"><div class="data-label">Cluster</div><div class="data-value truncate mono tiny">{{ health.ecs_backend.cluster or "not configured" }}</div></div>
+      <div class="data-row"><div class="data-label">Task definition</div><div class="data-value truncate mono tiny">{{ health.ecs_backend.task_definition or "not configured" }}</div></div>
+      <div class="data-row"><div class="data-label">Credentials</div><div class="data-value"><span class="pill {{ 'ok' if health.ecs_runtime_status.credentials_ok else 'bad' }}">{{ "OK" if health.ecs_runtime_status.credentials_ok else "Not ready" }}</span></div></div>
+      <div class="data-row"><div class="data-label">Task lookup</div><div class="data-value"><span class="pill {{ 'ok' if health.ecs_runtime_status.task_definition_ok else 'bad' }}">{{ "OK" if health.ecs_runtime_status.task_definition_ok else "Not ready" }}</span></div></div>
+      {% if health.ecs_runtime_status.error %}<div class="data-row"><div class="data-label">Error</div><div class="data-value status-bad">{{ health.ecs_runtime_status.error }}</div></div>{% endif %}
+    </div>
+  </section>
+</div>
+
+<div class="grid cols-2" style="margin-top:14px;">
+  <section class="card">
+    <div class="section-title">
+      <div>
+        <h2>Deployment</h2>
+        <p>Current server release metadata.</p>
+      </div>
+      <span class="pill {{ 'ok' if health.release.available else 'warn' }}">{{ "Present" if health.release.available else "Missing" }}</span>
+    </div>
+    <div class="data-list">
+      <div class="data-row"><div class="data-label">Revision</div><div class="data-value truncate mono tiny">{{ health.release.revision or "unknown" }}</div></div>
+      <div class="data-row"><div class="data-label">Deployed</div><div class="data-value">{{ health.release.deployed_at or "unknown" }}</div></div>
+      <div class="data-row"><div class="data-label">Source</div><div class="data-value">{{ health.release.source or "unknown" }}</div></div>
+      <div class="data-row"><div class="data-label">Host</div><div class="data-value">{{ health.release.hostname or "unknown" }}</div></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="section-title">
+      <div>
+        <h2>Storage</h2>
+        <p>Writable artifact roots.</p>
+      </div>
+    </div>
     <table>
       {% for root, writable in health.artifact_roots_writable.items() %}
-      <tr><td>{{ root }}</td><td>{{ writable }}</td></tr>
+      <tr>
+        <td class="truncate mono tiny">{{ root }}</td>
+        <td><span class="pill {{ 'ok' if writable else 'bad' }}">{{ "Writable" if writable else "Blocked" }}</span></td>
+      </tr>
       {% endfor %}
     </table>
+  </section>
+</div>
+
+<section class="card" style="margin-top:14px;">
+  <div class="section-title">
+    <div>
+      <h2>Adapters</h2>
+      <p>Supplier adapters available in the deployed code.</p>
+    </div>
   </div>
-</div>
-<div class="card" style="margin-top:16px;">
-  <h3>ECS Worker Backend</h3>
-  <p>Region: <span class="muted">{{ health.ecs_backend.region or "not configured" }}</span></p>
-  <p>Cluster: <span class="muted">{{ health.ecs_backend.cluster or "not configured" }}</span></p>
-  <p>Task definition: <span class="muted">{{ health.ecs_backend.task_definition or "not configured" }}</span></p>
-  <p>Container name: <span class="muted">{{ health.ecs_backend.container_name or "not configured" }}</span></p>
-  <p>Artifact bucket: <span class="muted">{{ health.ecs_backend.artifact_bucket or "not configured" }}</span></p>
-</div>
-<div class="card" style="margin-top:16px;">
-  <h3>Available Adapters</h3>
-  <p class="muted">{{ health.available_adapters | join(", ") }}</p>
-</div>
-<div class="card" style="margin-top:16px;">
-  <h3>Service Log Tail</h3>
+  <p class="soft">{{ health.available_adapters | join(", ") }}</p>
+</section>
+
+<section class="card" style="margin-top:14px;">
+  <div class="section-title">
+    <div>
+      <h2>Service Log Tail</h2>
+      <p>Recent control-plane service output.</p>
+    </div>
+  </div>
   <pre>{{ health.service_log_tail }}</pre>
-</div>
+</section>
 {% endblock %}

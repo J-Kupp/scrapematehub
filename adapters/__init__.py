@@ -5,7 +5,9 @@ from adapters.base import SupplierAdapter
 
 
 ADAPTER_REGISTRY = {
+    "gourmador": "adapters.gourmador:GourmadorAdapter",
     "swissbox": "adapters.swissbox:SwissboxAdapter",
+    "walker": "adapters.walker:WalkerAdapter",
 }
 
 

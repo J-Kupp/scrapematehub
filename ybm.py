@@ -165,6 +165,55 @@ def parse_number(value: str) -> int | float | None:
     return number
 
 
+def is_integer_like(value: int | float | None) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, int):
+        return True
+    return value.is_integer()
+
+
+def build_vessel_payload(
+    *,
+    vessel_id: str,
+    vessel_size: int | float | None,
+    vessel_unit: str,
+    vessel_type: str,
+) -> dict[str, Any] | None:
+    if vessel_size is None or not vessel_unit:
+        return None
+    if vessel_unit == "g":
+        if not is_integer_like(vessel_size):
+            return None
+        vessel_size = int(vessel_size)
+    return {
+        "id": vessel_id,
+        "size": vessel_size,
+        "unit": vessel_unit,
+        "type": vessel_type,
+    }
+
+
+def build_bundle_payload(
+    *,
+    bundle_id: str,
+    bundle_size: int | float | None,
+    bundle_type: str,
+) -> dict[str, Any] | None:
+    if bundle_size is None or not bundle_type:
+        return None
+    if not is_integer_like(bundle_size):
+        return None
+    bundle_size = int(bundle_size)
+    if bundle_size < 2:
+        return None
+    return {
+        "id": bundle_id,
+        "type": bundle_type,
+        "size": bundle_size,
+    }
+
+
 def price_to_cents(price: str) -> int | None:
     if not price:
         return None
@@ -264,22 +313,22 @@ def map_product_to_ybm(product: NormalizedProduct, supplier_slug: str) -> dict[s
         "order_by": product.order_by or "vessel",
     }
     vessel_size = parse_number(product.vessel_size)
-    if vessel_size is not None and product.vessel_unit:
-        payload["vessel"] = {
-            "id": f"{product_id}__vessel",
-            "size": vessel_size,
-            "unit": product.vessel_unit,
-            "type": map_vessel_type_code(product.vessel_type),
-        }
+    vessel_payload = build_vessel_payload(
+        vessel_id=f"{product_id}__vessel",
+        vessel_size=vessel_size,
+        vessel_unit=product.vessel_unit,
+        vessel_type=map_vessel_type_code(product.vessel_type),
+    )
+    if vessel_payload:
+        payload["vessel"] = vessel_payload
     bundle_size = parse_number(product.bundle_size)
-    if bundle_size is not None and product.bundle_type:
-        payload["bundles"] = [
-            {
-                "id": f"{product_id}__bundle",
-                "type": map_bundle_type_code(product.bundle_type),
-                "size": bundle_size,
-            }
-        ]
+    bundle_payload = build_bundle_payload(
+        bundle_id=f"{product_id}__bundle",
+        bundle_size=bundle_size,
+        bundle_type=map_bundle_type_code(product.bundle_type),
+    )
+    if bundle_payload:
+        payload["bundles"] = [bundle_payload]
     price_cents = price_to_cents(product.price)
     if price_cents is not None:
         payload["price"] = price_cents
@@ -307,22 +356,22 @@ def map_row_to_ybm(row: dict[str, str], supplier_slug: str) -> dict[str, Any]:
         "order_by": row["Order by"] or "vessel",
     }
     vessel_size = parse_number(row["Vessel size"])
-    if vessel_size is not None and row["Vessel unit"]:
-        payload["vessel"] = {
-            "id": f"{row['Item ID']}__vessel",
-            "size": vessel_size,
-            "unit": row["Vessel unit"],
-            "type": row["Vessel type"] or "NA",
-        }
+    vessel_payload = build_vessel_payload(
+        vessel_id=f"{row['Item ID']}__vessel",
+        vessel_size=vessel_size,
+        vessel_unit=row["Vessel unit"],
+        vessel_type=row["Vessel type"] or "NA",
+    )
+    if vessel_payload:
+        payload["vessel"] = vessel_payload
     bundle_size = parse_number(row["Bundle size"])
-    if bundle_size is not None and row["Bundle type"]:
-        payload["bundles"] = [
-            {
-                "id": f"{row['Item ID']}__bundle",
-                "type": row["Bundle type"],
-                "size": bundle_size,
-            }
-        ]
+    bundle_payload = build_bundle_payload(
+        bundle_id=f"{row['Item ID']}__bundle",
+        bundle_size=bundle_size,
+        bundle_type=row["Bundle type"],
+    )
+    if bundle_payload:
+        payload["bundles"] = [bundle_payload]
     price_cents = price_to_cents(row["Price"])
     if price_cents is not None:
         payload["price"] = price_cents
@@ -549,6 +598,12 @@ def sync_to_ybm(
     remote_categories = client.list_categories()
     remote_products = client.list_products()
     remote_products_by_id = {product["id"]: product for product in remote_products}
+    owned_remote_product_ids = {
+        product_id
+        for product_id in remote_products_by_id
+        if product_id.startswith(f"{config.supplier_slug}__")
+    }
+    summary.old_catalog_products = len(owned_remote_product_ids)
 
     local_categories = map_categories(products, config.supplier_slug)
     categories_to_sync, category_aliases = reconcile_categories(local_categories, remote_categories)
@@ -589,11 +644,6 @@ def sync_to_ybm(
             client.patch_product(product_id, payload)
 
     if not skip_inactivate:
-        owned_remote_product_ids = {
-            product_id
-            for product_id in remote_products_by_id
-            if product_id.startswith(f"{config.supplier_slug}__")
-        }
         missing_remote_product_ids = owned_remote_product_ids - set(local_payloads)
         for product_id in sorted(missing_remote_product_ids):
             remote = remote_products_by_id[product_id]
@@ -622,6 +672,12 @@ def sync_rows_to_ybm(
     remote_categories = client.list_categories()
     remote_products = client.list_products()
     remote_products_by_id = {product["id"]: product for product in remote_products}
+    owned_remote_product_ids = {
+        product_id
+        for product_id in remote_products_by_id
+        if product_id.startswith(f"{config.supplier_slug}__")
+    }
+    summary.old_catalog_products = len(owned_remote_product_ids)
 
     local_categories = map_categories_from_rows(rows, config.supplier_slug)
     categories_to_sync, category_aliases = reconcile_categories(local_categories, remote_categories)
@@ -658,7 +714,6 @@ def sync_rows_to_ybm(
             client.patch_product(product_id, payload)
 
     if not skip_inactivate:
-        owned_remote_product_ids = set(remote_products_by_id)
         missing_remote_product_ids = owned_remote_product_ids - set(local_payloads)
         for product_id in sorted(missing_remote_product_ids):
             remote = remote_products_by_id[product_id]

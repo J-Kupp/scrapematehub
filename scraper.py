@@ -28,8 +28,16 @@ def build_parser() -> argparse.ArgumentParser:
     run_supplier_parser.add_argument(
         "--skip-inactivate",
         action="store_true",
+        default=None,
         help="Do not mark missing remote products as INACTIVE during sync.",
     )
+
+    scrape_only_parser = subparsers.add_parser(
+        "scrape-supplier",
+        help="Scrape and transform one supplier, then export the prepared artifacts without syncing.",
+    )
+    scrape_only_parser.add_argument("supplier_slug", help="Supplier slug from suppliers.json.")
+    scrape_only_parser.add_argument("--force-refresh", action="store_true", help="Ignore local HTTP snapshot cache.")
 
     run_all_parser = subparsers.add_parser("run-all-suppliers", help="Run all enabled supplier jobs sequentially.")
     run_all_parser.add_argument("--force-refresh", action="store_true", help="Ignore local HTTP snapshot cache.")
@@ -44,6 +52,7 @@ def build_parser() -> argparse.ArgumentParser:
     dry_run_parser.add_argument(
         "--skip-inactivate",
         action="store_true",
+        default=None,
         help="Do not include INACTIVE transitions in the sync diff.",
     )
 
@@ -61,6 +70,7 @@ def build_parser() -> argparse.ArgumentParser:
     sync_from_export_parser.add_argument(
         "--skip-inactivate",
         action="store_true",
+        default=None,
         help="Do not mark missing remote products as INACTIVE during sync.",
     )
 
@@ -95,6 +105,7 @@ def main() -> int:
             dry_run=False,
             force_refresh=args.force_refresh,
             sync_from_export=False,
+            scrape_only=False,
             env_path=args.env_file,
             limit_products=args.limit_products,
             skip_inactivate=args.skip_inactivate,
@@ -107,12 +118,25 @@ def main() -> int:
             env_path=args.env_file,
         )
         return 0
+    if args.command == "scrape-supplier":
+        run_supplier(
+            args.supplier_slug,
+            dry_run=False,
+            force_refresh=args.force_refresh,
+            sync_from_export=False,
+            scrape_only=True,
+            env_path=args.env_file,
+            limit_products=None,
+            skip_inactivate=False,
+        )
+        return 0
     if args.command == "dry-run-supplier":
         run_supplier(
             args.supplier_slug,
             dry_run=True,
             force_refresh=args.force_refresh,
             sync_from_export=False,
+            scrape_only=False,
             env_path=args.env_file,
             limit_products=args.limit_products,
             skip_inactivate=args.skip_inactivate,
@@ -124,6 +148,7 @@ def main() -> int:
             dry_run=args.dry_run,
             force_refresh=False,
             sync_from_export=True,
+            scrape_only=False,
             env_path=args.env_file,
             limit_products=args.limit_products,
             skip_inactivate=args.skip_inactivate,

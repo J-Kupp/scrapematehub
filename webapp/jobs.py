@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import asdict
 from datetime import datetime, timezone
 import json
 import os
@@ -16,13 +17,14 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from config import PROJECT_ROOT, get_log_root, get_supplier_config, load_supplier_configs
 from orchestrator import supplier_paths
 from webapp.config import EcsBackendConfig
-from webapp.ecs_jobs import describe_ecs_task, EcsJobError, launch_ecs_task
+from webapp.ecs_jobs import describe_ecs_task, EcsJobError, launch_ecs_task, stop_ecs_task
 
 
 JOB_STATUS_QUEUED = "queued"
 JOB_STATUS_RUNNING = "running"
 JOB_STATUS_SUCCEEDED = "succeeded"
 JOB_STATUS_FAILED = "failed"
+JOB_STATUS_STOPPED = "stopped"
 
 
 def utc_now() -> str:
@@ -38,7 +40,9 @@ def build_job_command(
     command = [sys.executable, "scraper.py"]
     if env_file is not None:
         command.extend(["--env-file", str(env_file)])
-    if job_type == "scrape_dry_run":
+    if job_type == "scrape_only":
+        command.extend(["scrape-supplier", supplier_slug])
+    elif job_type == "scrape_dry_run":
         command.extend(["dry-run-supplier", supplier_slug])
     elif job_type == "scrape_and_sync":
         command.extend(["run-supplier", supplier_slug])
@@ -56,9 +60,9 @@ def build_worker_job_args(
     env_file: Path | None,
 ) -> list[str]:
     args: list[str] = []
-    if env_file is not None:
-        args.extend(["--env-file", str(env_file)])
-    if job_type == "scrape_dry_run":
+    if job_type == "scrape_only":
+        args.extend(["scrape-supplier", supplier_slug])
+    elif job_type == "scrape_dry_run":
         args.extend(["dry-run-supplier", supplier_slug])
     elif job_type == "scrape_and_sync":
         args.extend(["run-supplier", supplier_slug])
@@ -160,6 +164,8 @@ class JobRunner:
         self.job_backend = job_backend
         self.ecs_backend = ecs_backend or EcsBackendConfig()
         self._stop_event = threading.Event()
+        self._state_lock = threading.Lock()
+        self._active_local_processes: dict[int, subprocess.Popen[str]] = {}
         self._worker = threading.Thread(target=self._run_loop, daemon=True)
         self.scheduler: BackgroundScheduler | None = None
 
@@ -179,6 +185,62 @@ class JobRunner:
             self.scheduler.shutdown(wait=False)
             self.scheduler = None
         self.start_scheduler(enabled=enabled, mode=mode)
+
+    def stop_job(self, job_id: int, *, reason: str = "Stopped by user.") -> dict[str, Any]:
+        job = get_job(self.conn, job_id)
+        if job is None:
+            raise KeyError(f"Job {job_id} not found.")
+        if job.get("status") in {JOB_STATUS_SUCCEEDED, JOB_STATUS_FAILED, JOB_STATUS_STOPPED}:
+            return job
+
+        stop_at = utc_now()
+        if job.get("status") == JOB_STATUS_QUEUED:
+            self.conn.execute(
+                """
+                UPDATE jobs
+                SET status = ?, finished_at = ?, stop_requested_at = ?, error_message = ?
+                WHERE id = ?
+                """,
+                (
+                    JOB_STATUS_STOPPED,
+                    stop_at,
+                    stop_at,
+                    reason,
+                    job_id,
+                ),
+            )
+            self.conn.commit()
+            return get_job(self.conn, job_id) or job
+
+        self.conn.execute(
+            """
+            UPDATE jobs
+            SET stop_requested_at = ?, error_message = COALESCE(NULLIF(error_message, ''), ?)
+            WHERE id = ?
+            """,
+            (stop_at, reason, job_id),
+        )
+        self.conn.commit()
+
+        if job.get("backend") == "ecs_fargate" and job.get("remote_job_id"):
+            stop_ecs_task(self.ecs_backend, task_arn=str(job["remote_job_id"]), reason=reason)
+            return get_job(self.conn, job_id) or job
+
+        with self._state_lock:
+            process = self._active_local_processes.get(job_id)
+        if process is not None and process.poll() is None:
+            try:
+                process.terminate()
+            except Exception:
+                pass
+            try:
+                process.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                try:
+                    process.kill()
+                except Exception:
+                    pass
+        return get_job(self.conn, job_id) or job
 
     def start_scheduler(self, *, enabled: bool, mode: str) -> None:
         if not enabled or mode != "internal":
@@ -223,20 +285,116 @@ class JobRunner:
             return
 
     def _recover_stale_jobs(self) -> None:
-        self.conn.execute(
+        running_rows = self.conn.execute(
             """
-            UPDATE jobs
-            SET status = ?, finished_at = ?, error_message = COALESCE(NULLIF(error_message, ''), ?)
+            SELECT * FROM jobs
             WHERE status = ?
+            ORDER BY id ASC
             """,
-            (
-                JOB_STATUS_FAILED,
-                utc_now(),
-                "Recovered stale running job during service startup.",
-                JOB_STATUS_RUNNING,
-            ),
-        )
-        self.conn.commit()
+            (JOB_STATUS_RUNNING,),
+        ).fetchall()
+        for row in running_rows:
+            job = dict(row)
+            if job.get("stop_requested_at"):
+                if job.get("backend") == "ecs_fargate" and job.get("remote_job_id"):
+                    try:
+                        result = describe_ecs_task(self.ecs_backend, task_arn=job["remote_job_id"])
+                    except Exception:
+                        continue
+                    self.conn.execute(
+                        """
+                        UPDATE jobs
+                        SET remote_status = ?, cloudwatch_log_group = ?, cloudwatch_log_stream = ?
+                        WHERE id = ?
+                        """,
+                        (result.last_status, result.log_group, result.log_stream, job["id"]),
+                    )
+                    if result.last_status == "STOPPED":
+                        self.conn.execute(
+                            """
+                            UPDATE jobs
+                            SET status = ?, finished_at = ?, exit_code = ?, error_message = ?,
+                                backend = ?
+                            WHERE id = ?
+                            """,
+                            (
+                                JOB_STATUS_STOPPED,
+                                utc_now(),
+                                result.exit_code,
+                                job.get("error_message") or result.stopped_reason or result.stop_code or "Stopped by user.",
+                                "ecs_fargate",
+                                job["id"],
+                            ),
+                        )
+                    self.conn.commit()
+                    continue
+                self.conn.execute(
+                    """
+                    UPDATE jobs
+                    SET status = ?, finished_at = ?, exit_code = ?, error_message = ?
+                    WHERE id = ?
+                    """,
+                    (
+                        JOB_STATUS_STOPPED,
+                        utc_now(),
+                        job.get("exit_code") if job.get("exit_code") is not None else 0,
+                        job.get("error_message") or "Stopped by user.",
+                        job["id"],
+                    ),
+                )
+                self.conn.commit()
+                continue
+            if job.get("backend") == "ecs_fargate" and job.get("remote_job_id"):
+                try:
+                    result = describe_ecs_task(self.ecs_backend, task_arn=job["remote_job_id"])
+                except Exception:
+                    continue
+                self.conn.execute(
+                    """
+                    UPDATE jobs
+                    SET remote_status = ?, cloudwatch_log_group = ?, cloudwatch_log_stream = ?
+                    WHERE id = ?
+                    """,
+                    (result.last_status, result.log_group, result.log_stream, job["id"]),
+                )
+                if result.last_status == "STOPPED":
+                    config = get_supplier_config(job["supplier_slug"])
+                    paths = supplier_paths(job["supplier_slug"], config.output_path(PROJECT_ROOT))
+                    status = JOB_STATUS_SUCCEEDED if result.exit_code == 0 else JOB_STATUS_FAILED
+                    self.conn.execute(
+                        """
+                        UPDATE jobs
+                        SET status = ?, finished_at = ?, exit_code = ?, error_message = ?,
+                            run_summary_path = ?, sync_report_path = ?, backend = ?
+                        WHERE id = ?
+                        """,
+                        (
+                            status,
+                            utc_now(),
+                            result.exit_code,
+                            result.stopped_reason or result.stop_code,
+                            str(paths["run_summary"]),
+                            str(paths["sync_report"]),
+                            "ecs_fargate",
+                            job["id"],
+                        ),
+                    )
+                self.conn.commit()
+                continue
+            self.conn.execute(
+                """
+                UPDATE jobs
+                SET status = ?, finished_at = ?, error_message = COALESCE(NULLIF(error_message, ''), ?)
+                WHERE id = ?
+                """,
+                (
+                    JOB_STATUS_FAILED,
+                    utc_now(),
+                    "Recovered stale running job during service startup.",
+                    job["id"],
+                ),
+            )
+            self.conn.commit()
 
     def _claim_next_job(self) -> dict[str, Any] | None:
         queued_row = self.conn.execute(
@@ -261,6 +419,7 @@ class JobRunner:
 
     def _run_loop(self) -> None:
         while not self._stop_event.is_set():
+            self._recover_stale_jobs()
             running = self.conn.execute(
                 "SELECT id FROM jobs WHERE status = ? LIMIT 1",
                 (JOB_STATUS_RUNNING,),
@@ -272,13 +431,43 @@ class JobRunner:
             if job is None:
                 time.sleep(1.0)
                 continue
-            self._execute_job(job)
+            try:
+                self._execute_job(job)
+            except Exception as exc:  # pragma: no cover - safety net for background thread
+                self.conn.execute(
+                    """
+                    UPDATE jobs
+                    SET status = ?, finished_at = ?, exit_code = ?, error_message = ?
+                    WHERE id = ?
+                    """,
+                    (
+                        JOB_STATUS_FAILED,
+                        utc_now(),
+                        1,
+                        str(exc),
+                        job["id"],
+                    ),
+                )
+                self.conn.commit()
 
     def _execute_job(self, job: dict[str, Any]) -> None:
-        if self.job_backend == "ecs_fargate":
+        runtime_backend = self._job_runtime_backend(job["job_type"])
+        if runtime_backend == "ecs_fargate":
             self._execute_ecs_job(job)
             return
         self._execute_local_job(job)
+
+    def _job_stop_requested(self, job_id: int) -> bool:
+        row = self.conn.execute(
+            "SELECT stop_requested_at FROM jobs WHERE id = ?",
+            (job_id,),
+        ).fetchone()
+        return bool(row and row["stop_requested_at"])
+
+    def _job_runtime_backend(self, job_type: str) -> str:
+        if self.job_backend == "ecs_fargate" and job_type in {"scrape_only", "sync_from_export"}:
+            return "local_subprocess"
+        return self.job_backend
 
     def _execute_local_job(self, job: dict[str, Any]) -> None:
         supplier_slug = job["supplier_slug"]
@@ -296,7 +485,7 @@ class JobRunner:
         with log_path.open("w", encoding="utf-8") as handle:
             handle.write(f"$ {' '.join(command)}\n")
             handle.flush()
-            process = subprocess.run(
+            process = subprocess.Popen(
                 command,
                 cwd=PROJECT_ROOT,
                 env=env,
@@ -304,12 +493,51 @@ class JobRunner:
                 stderr=subprocess.STDOUT,
                 text=True,
             )
+            self.conn.execute(
+                "UPDATE jobs SET local_process_pid = ? WHERE id = ?",
+                (process.pid, job["id"]),
+            )
+            self.conn.commit()
+            with self._state_lock:
+                self._active_local_processes[job["id"]] = process
+            try:
+                while process.poll() is None:
+                    if self._job_stop_requested(job["id"]) or self._stop_event.is_set():
+                        try:
+                            process.terminate()
+                        except Exception:
+                            pass
+                        try:
+                            process.wait(timeout=10)
+                        except subprocess.TimeoutExpired:
+                            try:
+                                process.kill()
+                            except Exception:
+                                pass
+                            try:
+                                process.wait(timeout=10)
+                            except subprocess.TimeoutExpired:
+                                pass
+                        break
+                    time.sleep(0.5)
+                return_code = process.wait()
+            finally:
+                with self._state_lock:
+                    self._active_local_processes.pop(job["id"], None)
+                self.conn.execute(
+                    "UPDATE jobs SET local_process_pid = NULL WHERE id = ?",
+                    (job["id"],),
+                )
+                self.conn.commit()
 
         config = get_supplier_config(supplier_slug)
         paths = supplier_paths(supplier_slug, config.output_path(PROJECT_ROOT))
-        status = JOB_STATUS_SUCCEEDED if process.returncode == 0 else JOB_STATUS_FAILED
+        stopped = self._job_stop_requested(job["id"])
+        status = JOB_STATUS_STOPPED if stopped else (JOB_STATUS_SUCCEEDED if return_code == 0 else JOB_STATUS_FAILED)
         error_message = ""
-        if process.returncode != 0:
+        if stopped:
+            error_message = job.get("error_message") or "Stopped by user."
+        elif return_code != 0:
             error_message = tail_file(log_path, max_bytes=4000).splitlines()[-1] if tail_file(log_path) else ""
         self.conn.execute(
             """
@@ -321,7 +549,7 @@ class JobRunner:
             (
                 status,
                 utc_now(),
-                process.returncode,
+                return_code,
                 error_message,
                 str(paths["run_summary"]),
                 str(paths["sync_report"]),
@@ -341,6 +569,15 @@ class JobRunner:
         )
         config = get_supplier_config(supplier_slug)
         paths = supplier_paths(supplier_slug, config.output_path(PROJECT_ROOT))
+        supplier_configs_payload = {}
+        if self.supplier_config_path is not None:
+            try:
+                supplier = get_supplier_config(supplier_slug, self.supplier_config_path)
+                supplier_configs_payload = {
+                    "suppliers": [asdict(supplier)],
+                }
+            except Exception:
+                supplier_configs_payload = {}
         try:
             launch = launch_ecs_task(
                 self.ecs_backend,
@@ -349,6 +586,9 @@ class JobRunner:
                     "SUPPLIER_SLUG": supplier_slug,
                     "JOB_TYPE": job["job_type"],
                     "ENV_FILE_REF": str(self.env_file) if self.env_file else "",
+                    "SUPPLIER_CONFIG_JSON": json.dumps(supplier_configs_payload, ensure_ascii=False)
+                    if supplier_configs_payload
+                    else "",
                 },
                 supplier_slug=supplier_slug,
                 job_type=job["job_type"],
@@ -372,6 +612,15 @@ class JobRunner:
             )
             self.conn.commit()
             while not self._stop_event.is_set():
+                if self._job_stop_requested(job["id"]):
+                    try:
+                        stop_ecs_task(
+                            self.ecs_backend,
+                            task_arn=launch.task_arn,
+                            reason="Stopped by user.",
+                        )
+                    except Exception:
+                        pass
                 result = describe_ecs_task(self.ecs_backend, task_arn=launch.task_arn)
                 self.conn.execute(
                     """
@@ -383,7 +632,8 @@ class JobRunner:
                 )
                 self.conn.commit()
                 if result.last_status == "STOPPED":
-                    status = JOB_STATUS_SUCCEEDED if result.exit_code == 0 else JOB_STATUS_FAILED
+                    stopped = self._job_stop_requested(job["id"])
+                    status = JOB_STATUS_STOPPED if stopped else (JOB_STATUS_SUCCEEDED if result.exit_code == 0 else JOB_STATUS_FAILED)
                     self.conn.execute(
                         """
                         UPDATE jobs
@@ -395,7 +645,7 @@ class JobRunner:
                             status,
                             utc_now(),
                             result.exit_code,
-                            result.stopped_reason or result.stop_code,
+                            job.get("error_message") or result.stopped_reason or result.stop_code or ("Stopped by user." if stopped else ""),
                             str(paths["run_summary"]),
                             str(paths["sync_report"]),
                             "ecs_fargate",
@@ -405,7 +655,7 @@ class JobRunner:
                     self.conn.commit()
                     return
                 time.sleep(5.0)
-        except EcsJobError as exc:
+        except Exception as exc:
             self.conn.execute(
                 """
                 UPDATE jobs

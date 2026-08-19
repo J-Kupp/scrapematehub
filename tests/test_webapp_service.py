@@ -2,16 +2,23 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import ModuleType
 from unittest.mock import patch
 
 from models import SupplierConfig
-from webapp.config import BootstrapUser, WebAppConfig
+from webapp.config import BootstrapUser, EcsBackendConfig, WebAppConfig
 from webapp.db import connect, init_db
 from webapp.jobs import queue_job
-from webapp.service import onboarding_status, resolve_allowed_artifact, supplier_health_summary
+from webapp.service import (
+    onboarding_status,
+    resolve_allowed_artifact,
+    supplier_health_summary,
+    system_health,
+)
 
 
 class WebAppServiceTests(unittest.TestCase):
@@ -56,7 +63,7 @@ class WebAppServiceTests(unittest.TestCase):
             json.dumps(
                 {
                     "product_count": 2419,
-                    "validation": {"errors": [], "warnings": []},
+                    "validation": {"performed": True, "errors": [], "warnings": []},
                 }
             ),
             encoding="utf-8",
@@ -107,6 +114,7 @@ class WebAppServiceTests(unittest.TestCase):
         self.assertEqual(summary["supplier_slug"], "swissbox")
         self.assertTrue(summary["secret_present"])
         self.assertEqual(summary["product_count"], 2419)
+        self.assertEqual(summary["catalog_update_policy"], "delete_missing")
         self.assertEqual(summary["last_run_status"], "ok")
         self.assertEqual(summary["latest_job"]["job_type"], "scrape_dry_run")
 
@@ -158,8 +166,78 @@ class WebAppServiceTests(unittest.TestCase):
             adapter_available=True,
             structure=structure,
             secret_present=True,
-            run_summary={"validation": {"errors": [], "warnings": []}},
+            run_summary={"validation": {"performed": True, "errors": [], "warnings": []}},
             sync_report={"aborted": False, "errors": []},
         )
         self.assertEqual(status["stage"], "Live")
         self.assertTrue(status["live"])
+
+    def test_system_health_reports_missing_release_metadata(self) -> None:
+        health = system_health(self.app_config)
+        self.assertEqual(health["job_backend"], "local_subprocess")
+        self.assertFalse(health["release"]["available"])
+        self.assertFalse(health["ecs_runtime_status"]["enabled"])
+
+    def test_system_health_reports_release_and_ecs_runtime_status(self) -> None:
+        control_panel_dir = self.root / "control_panel"
+        control_panel_dir.mkdir(parents=True, exist_ok=True)
+        release_path = control_panel_dir / "release.json"
+        release_path.write_text(
+            json.dumps(
+                {
+                    "revision": "abc123",
+                    "deployed_at": "2026-06-01T12:00:00+00:00",
+                    "source": "github-actions",
+                    "hostname": "ip-10-0-0-1",
+                }
+            ),
+            encoding="utf-8",
+        )
+        app_config = WebAppConfig(
+            db_path=str(control_panel_dir / "control_panel.db"),
+            job_backend="ecs_fargate",
+            ecs_backend=EcsBackendConfig(
+                region="eu-central-1",
+                cluster="cluster",
+                task_definition="family",
+                container_name="worker",
+                subnets=["subnet-123"],
+            ),
+            bootstrap_users=[BootstrapUser(username="admin", password_env_var="NOOP")],
+        )
+
+        class _FakeStsClient:
+            def get_caller_identity(self) -> dict[str, str]:
+                return {"Arn": "arn:aws:sts::123456789012:assumed-role/test/session"}
+
+        class _FakeEcsClient:
+            def describe_task_definition(self, taskDefinition: str) -> dict[str, object]:
+                return {
+                    "taskDefinition": {
+                        "taskDefinitionArn": (
+                            "arn:aws:ecs:eu-central-1:123456789012:"
+                            f"task-definition/{taskDefinition}:1"
+                        )
+                    }
+                }
+
+        fake_boto3 = ModuleType("boto3")
+
+        def _client(service_name: str, region_name: str | None = None):
+            self.assertEqual(region_name, "eu-central-1")
+            if service_name == "sts":
+                return _FakeStsClient()
+            if service_name == "ecs":
+                return _FakeEcsClient()
+            raise AssertionError(f"Unexpected service: {service_name}")
+
+        fake_boto3.client = _client  # type: ignore[attr-defined]
+
+        with patch.dict(sys.modules, {"boto3": fake_boto3}):
+            health = system_health(app_config)
+
+        self.assertTrue(health["release"]["available"])
+        self.assertEqual(health["release"]["revision"], "abc123")
+        self.assertTrue(health["ecs_runtime_status"]["enabled"])
+        self.assertTrue(health["ecs_runtime_status"]["credentials_ok"])
+        self.assertTrue(health["ecs_runtime_status"]["task_definition_ok"])

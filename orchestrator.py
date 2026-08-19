@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from dataclasses import asdict
 import hashlib
 import json
 import logging
@@ -22,7 +23,7 @@ from core.exporting import (
 from core.sync import YbmApiError, sync_rows_to_ybm
 from core.validation import validate_rows
 from config import PROJECT_ROOT, get_log_root, get_state_root, get_supplier_config, load_env_file, load_supplier_configs
-from models import SupplierRunResult, SupplierRunState
+from models import SupplierRunResult, SupplierRunState, ValidationResult
 from packaging import interpret_products, write_packaging_audit
 
 
@@ -91,12 +92,22 @@ def write_json(path: Path, payload: Any) -> None:
 
 
 def load_products_from_jsonl(path: Path) -> list[NormalizedProduct]:
+    if not path.exists():
+        raise FileNotFoundError(
+            f"No prepared export found at {path}. Run Scrape first, or use Scrape + Sync."
+        )
     products: list[NormalizedProduct] = []
     for line in path.read_text(encoding="utf-8").splitlines():
         if not line.strip():
             continue
         products.append(NormalizedProduct.from_dict(json.loads(line)))
     return products
+
+
+def resolve_skip_inactivate(config, explicit_skip_inactivate: bool | None = None) -> bool:
+    if explicit_skip_inactivate is not None:
+        return explicit_skip_inactivate
+    return str(getattr(config, "catalog_update_policy", "delete_missing")).strip().lower() == "keep_existing"
 
 
 def write_listing_diagnostics(path: Path, diagnostics: list[dict[str, str]]) -> None:
@@ -111,9 +122,44 @@ def build_run_summary(
     *,
     dry_run: bool,
     sync_summary: dict[str, Any] | None,
+    mode: str,
 ) -> dict[str, Any]:
+    validation = {
+        "performed": run_result.validation.performed,
+        "row_count": run_result.validation.row_count,
+        "passed_row_count": run_result.validation.passed_row_count,
+        "error_count": len(run_result.validation.errors),
+        "warning_count": len(run_result.validation.warnings),
+        "errors": run_result.validation.errors,
+        "warnings": run_result.validation.warnings,
+    }
+    scrape_stage = {
+        "performed": mode in {"scrape_only", "scrape_and_sync", "scrape_dry_run"},
+        "product_count": len(run_result.products),
+        "failure_count": len(run_result.failures),
+        "discovered_product_url_count": len(run_result.discovered_product_urls),
+        "covered_product_url_count": run_result.covered_product_url_count,
+        "raw_record_count": run_result.raw_record_count,
+        "interpreted_record_count": run_result.interpreted_record_count,
+    }
+    sync_stage = {
+        "performed": sync_summary is not None,
+        "dry_run": dry_run,
+        "aborted": bool(sync_summary and sync_summary.get("aborted")),
+        "old_catalog_products": int((sync_summary or {}).get("old_catalog_products", 0)),
+        "created_products": int((sync_summary or {}).get("created_products", 0)),
+        "updated_products": int((sync_summary or {}).get("updated_products", 0)),
+        "unchanged_products": int((sync_summary or {}).get("unchanged_products", 0)),
+        "inactivated_products": int((sync_summary or {}).get("inactivated_products", 0)),
+        "uploaded_products": int((sync_summary or {}).get("created_products", 0))
+        + int((sync_summary or {}).get("updated_products", 0)),
+        "errors": list((sync_summary or {}).get("errors", [])),
+        "reason": (sync_summary or {}).get("reason", ""),
+        "error": (sync_summary or {}).get("error", ""),
+    }
     return {
         "supplier_slug": run_result.supplier_slug,
+        "mode": mode,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "product_count": len(run_result.products),
         "failure_count": len(run_result.failures),
@@ -122,17 +168,19 @@ def build_run_summary(
         "raw_record_count": run_result.raw_record_count,
         "interpreted_record_count": run_result.interpreted_record_count,
         "checksum": run_result.checksum,
-        "validation": {
-            "errors": run_result.validation.errors,
-            "warnings": run_result.validation.warnings,
-        },
+        "validation": validation,
         "dry_run": dry_run,
         "output_paths": run_result.output_paths,
         "sync_summary": sync_summary,
+        "stages": {
+            "scrape": scrape_stage,
+            "validation": validation,
+            "sync": sync_stage,
+        },
     }
 
 
-def export_and_validate(
+def export_scrape_artifacts(
     supplier_slug: str,
     products: list[NormalizedProduct],
     failures: list[dict[str, str]],
@@ -151,13 +199,6 @@ def export_and_validate(
     write_csv_rows(rows, paths["csv"])
     write_correction_report(correction_rows, paths["correction_report"])
     write_packaging_audit(audit_rows, paths["packaging_audit"])
-    validation = validate_rows(
-        rows,
-        discovered_product_urls,
-        failures,
-        covered_product_url_count=covered_product_url_count,
-        products=products,
-    )
     write_listing_diagnostics(paths["listing_diagnostics"], listing_diagnostics)
     return SupplierRunResult(
         supplier_slug=supplier_slug,
@@ -165,7 +206,11 @@ def export_and_validate(
         failures=failures,
         discovered_product_urls=discovered_product_urls,
         listing_diagnostics=listing_diagnostics,
-        validation=validation,
+        validation=ValidationResult(
+            performed=False,
+            row_count=len(rows),
+            passed_row_count=0,
+        ),
         output_paths={key: str(value) for key, value in paths.items() if key not in {"state_file", "output_dir"}},
         checksum=compute_products_checksum(products),
         covered_product_url_count=covered_product_url_count,
@@ -190,13 +235,15 @@ def run_supplier(
     dry_run: bool = False,
     force_refresh: bool = False,
     sync_from_export: bool = False,
+    scrape_only: bool = False,
     env_path: Path | None = None,
     limit_products: int | None = None,
-    skip_inactivate: bool = False,
+    skip_inactivate: bool | None = None,
 ) -> SupplierRunResult:
     service_logger = setup_service_logger()
     load_env_file(env_path)
     config = get_supplier_config(supplier_slug)
+    effective_skip_inactivate = resolve_skip_inactivate(config, skip_inactivate)
     paths = supplier_paths(supplier_slug, config.output_path(PROJECT_ROOT))
     state = load_state(paths["state_file"], supplier_slug)
 
@@ -220,7 +267,7 @@ def run_supplier(
         raw_record_count = scrape_result.raw_record_count
         interpreted_record_count = scrape_result.interpreted_record_count
 
-    run_result, cleaned_rows, correction_rows = export_and_validate(
+    run_result, cleaned_rows, correction_rows = export_scrape_artifacts(
         supplier_slug,
         products,
         failures,
@@ -232,20 +279,32 @@ def run_supplier(
     run_result.raw_record_count = raw_record_count
     run_result.interpreted_record_count = interpreted_record_count
 
+    mode = "sync_from_export" if sync_from_export else ("scrape_only" if scrape_only else ("scrape_dry_run" if dry_run else "scrape_and_sync"))
     sync_summary_payload: dict[str, Any] | None = None
-    if run_result.validation.is_valid:
+    if not scrape_only:
+        run_result.validation = validate_rows(
+            cleaned_rows,
+            discovered_product_urls,
+            failures,
+            covered_product_url_count=covered_product_url_count,
+            products=products,
+        )
+
+    if scrape_only:
+        sync_summary_payload = None
+    elif run_result.validation.is_valid:
         try:
             sync_summary, remote_categories, remote_products = sync_rows_to_ybm(
                 config,
                 cleaned_rows,
                 dry_run=dry_run,
                 limit_products=limit_products,
-                skip_inactivate=skip_inactivate,
+                skip_inactivate=effective_skip_inactivate,
             )
         except YbmApiError as exc:
             sync_summary_payload = {"aborted": True, "reason": "ybm_api_error", "error": str(exc)}
             write_json(paths["sync_report"], sync_summary_payload)
-            run_summary = build_run_summary(run_result, dry_run=dry_run, sync_summary=sync_summary_payload)
+            run_summary = build_run_summary(run_result, dry_run=dry_run, sync_summary=sync_summary_payload, mode=mode)
             write_json(paths["run_summary"], run_summary)
             service_logger.error("Supplier %s sync failed: %s", supplier_slug, exc)
             raise
@@ -264,13 +323,13 @@ def run_supplier(
         sync_summary_payload = {"aborted": True, "reason": "validation_errors"}
         write_json(paths["sync_report"], sync_summary_payload)
 
-    run_summary = build_run_summary(run_result, dry_run=dry_run, sync_summary=sync_summary_payload)
+    run_summary = build_run_summary(run_result, dry_run=dry_run, sync_summary=sync_summary_payload, mode=mode)
     run_summary["correction_count"] = len(correction_rows)
     write_json(paths["run_summary"], run_summary)
-    if run_result.validation.errors:
+    if not scrape_only and run_result.validation.errors:
         service_logger.error("Supplier %s failed validation: %s", supplier_slug, "; ".join(run_result.validation.errors))
         raise RuntimeError(f"Validation failed for {supplier_slug}: {'; '.join(run_result.validation.errors)}")
-    service_logger.info("Supplier %s completed. dry_run=%s products=%s", supplier_slug, dry_run, len(products))
+    service_logger.info("Supplier %s completed. mode=%s dry_run=%s products=%s", supplier_slug, mode, dry_run, len(products))
     return run_result
 
 
@@ -287,7 +346,7 @@ def run_all_suppliers(*, dry_run: bool = False, force_refresh: bool = False, env
                 sync_from_export=False,
                 env_path=env_path,
                 limit_products=None,
-                skip_inactivate=False,
+                skip_inactivate=None,
             )
         )
     return results

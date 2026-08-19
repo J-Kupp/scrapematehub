@@ -1,83 +1,188 @@
 {% extends "base.html" %}
 {% block header %}
-<div class="hero">
+<div class="page-header">
   <div>
     <h1>{{ supplier.supplier_slug }}</h1>
-    <p class="muted">{{ supplier.adapter }} • {{ supplier.base_url }} • Supplier detail and operational overview</p>
+    <p>{{ supplier.adapter }} · {{ supplier.base_url }}</p>
   </div>
   <div class="actions">
-    <a class="button-link ghost" href="/suppliers/{{ supplier.supplier_slug }}/edit">Edit Supplier</a>
+    <a class="button-link secondary" href="/suppliers/{{ supplier.supplier_slug }}/edit">Edit Supplier</a>
+    <a class="button-link ghost" href="/connections">Onboarding</a>
   </div>
 </div>
 {% endblock %}
 {% block content %}
-{% if notice %}<p class="notice">{{ notice }}</p>{% endif %}
+{% if notice %}<div class="notice">{{ notice }}</div>{% endif %}
+
+<div class="summary-grid">
+  <div class="stat">
+    <span class="stat-label">Readiness</span>
+    <span><span class="pill {{ 'ok' if summary.onboarding.live else ('warn' if summary.onboarding.stage != 'Config only' else 'bad') }}">{{ summary.onboarding.stage }}</span></span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">Products</span>
+    <span class="stat-value">{{ summary.product_count }}</span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">Validation errors</span>
+    <span class="stat-value">{{ summary.validation_error_count }}</span>
+  </div>
+  <div class="stat">
+    <span class="stat-label">Schedule</span>
+    <span class="soft">{{ summary.next_run_display }}</span>
+  </div>
+</div>
+
+<section class="card" style="margin-bottom:14px;">
+  <div class="section-title">
+    <div>
+      <h2>Run Controls</h2>
+      <p>Run the full supplier pipeline in one go: scrape, transform, validate, and sync.</p>
+    </div>
+    <span class="pill {{ 'ok' if summary.secret_present else 'bad' }}">{{ 'Token ready' if summary.secret_present else 'Token missing' }}</span>
+  </div>
+  <div class="actions">
+    <button onclick="queueJob('{{ supplier.supplier_slug }}','run-sync')">Scrape + Sync</button>
+  </div>
+</section>
+
 <div class="grid cols-2">
-  <div class="card">
-    <div class="section-title"><h3>Summary</h3><span class="pill {{ 'ok' if summary.secret_present else 'warn' }}">{{ 'API ready' if summary.secret_present else 'Needs token' }}</span></div>
-    <p style="margin:0 0 14px;"><span class="pill {{ 'ok' if summary.onboarding.live else ('warn' if summary.onboarding.stage != 'Config only' else 'bad') }}">{{ summary.onboarding.stage }}</span></p>
-    <div class="subgrid">
-      <div class="metric"><span class="muted tiny">Enabled</span><strong>{{ "Yes" if summary.enabled else "No" }}</strong></div>
-      <div class="metric"><span class="muted tiny">Products</span><strong>{{ summary.product_count }}</strong></div>
-      <div class="metric"><span class="muted tiny">Validation</span><strong>{{ summary.validation_error_count }}</strong><span class="muted tiny">errors, {{ summary.validation_warning_count }} warnings</span></div>
-      <div class="metric"><span class="muted tiny">Schedule</span><strong style="font-size:16px;">{{ summary.next_run_display }}</strong></div>
+  <section class="card">
+    <div class="section-title">
+      <div>
+        <h2>Operational State</h2>
+        <p>Connection, adapter, and last known sync health.</p>
+      </div>
     </div>
-    <p>Secret: <strong>{{ "configured" if summary.secret_present else "missing" }}</strong> ({{ summary.token_env_var }})</p>
-    <p>Adapter status: <strong>{{ "implemented" if supplier.adapter_available else "config only" }}</strong></p>
-    <p>Last successful run: <span class="muted">{{ summary.last_successful_run_at or "n/a" }}</span></p>
-    <div class="actions">
-      <button onclick="queueJob('{{ supplier.supplier_slug }}','dry-run')">Dry Run</button>
-      <button onclick="queueJob('{{ supplier.supplier_slug }}','run-sync')">Run Scrape + Sync</button>
-      <button class="secondary" onclick="queueJob('{{ supplier.supplier_slug }}','sync-from-export')">Sync Latest Export</button>
+    <div class="data-list">
+      <div class="data-row">
+        <div class="data-label">Enabled</div>
+        <div class="data-value"><span class="pill {{ 'ok' if summary.enabled else 'warn' }}">{{ "Yes" if summary.enabled else "No" }}</span></div>
+      </div>
+      <div class="data-row">
+        <div class="data-label">Secret</div>
+        <div class="data-value"><span class="pill {{ 'ok' if summary.secret_present else 'bad' }}">{{ "Configured" if summary.secret_present else "Missing" }}</span> <span class="muted tiny mono">{{ summary.token_env_var }}</span></div>
+      </div>
+      <div class="data-row">
+        <div class="data-label">Adapter</div>
+        <div class="data-value"><span class="pill {{ 'ok' if supplier.adapter_available else 'warn' }}">{{ "Implemented" if supplier.adapter_available else "Config only" }}</span></div>
+      </div>
+      <div class="data-row">
+        <div class="data-label">Last successful run</div>
+        <div class="data-value">{{ summary.last_successful_run_at or "Not recorded" }}</div>
+      </div>
+      <div class="data-row">
+        <div class="data-label">Catalog updates</div>
+        <div class="data-value">
+          <span class="pill">{{ summary.catalog_update_policy_label }}</span>
+          <div class="muted tiny" style="margin-top:6px;">
+            {{ "Missing items are inactivated if they are no longer scraped." if summary.catalog_update_policy == 'delete_missing' else "Missing items stay untouched; only matching rows are updated and new ones are added." }}
+          </div>
+        </div>
+      </div>
+      <div class="data-row">
+        <div class="data-label">Last sync</div>
+        <div class="data-value">
+          Created {{ summary.last_sync_summary.get('created_products', 0) }},
+          updated {{ summary.last_sync_summary.get('updated_products', 0) }},
+          unchanged {{ summary.last_sync_summary.get('unchanged_products', 0) }}
+        </div>
+      </div>
     </div>
-  </div>
-  <div class="card">
-    <div class="section-title"><h3>Connection & Paths</h3></div>
-    <p>YourBarMate API: <span class="muted">{{ supplier.ybm_api_base }}</span></p>
-    <p>Output dir: <span class="muted">{{ supplier.output_dir }}</span></p>
-    <p>Scrape settings: <span class="muted">{{ supplier.scrape_settings or {} }}</span></p>
-    <p>Scraper path: <span class="muted">{{ supplier.structure.scraper_path }}</span></p>
-    <p>Transformer path: <span class="muted">{{ supplier.structure.transformer_path }}</span></p>
-    <p>Fixtures path: <span class="muted">{{ supplier.structure.fixtures_path }}</span></p>
-    <p>Tests path: <span class="muted">{{ supplier.structure.tests_path }}</span></p>
-  </div>
-</div>
-<div class="card" style="margin-top:16px;">
-  <div class="section-title"><h3>Onboarding Checklist</h3></div>
-  <table>
-    {% for check in summary.onboarding.checks %}
-    <tr>
-      <td>{{ check.label }}</td>
-      <td><span class="pill {{ 'ok' if check.ok else 'warn' }}">{{ "done" if check.ok else "pending" }}</span></td>
-    </tr>
-    {% endfor %}
-  </table>
-</div>
-<div class="card" style="margin-top:16px;">
-  <div class="section-title"><h3>Artifacts</h3></div>
+  </section>
+
+  <section class="card">
+    <div class="section-title">
+      <div>
+        <h2>Onboarding</h2>
+        <p>What still needs to be true before this supplier is fully live.</p>
+      </div>
+    </div>
     <table>
-      {% for key, path in summary.output_paths.items() %}
-      <tr><td>{{ key }}</td><td><a href="/artifacts?path={{ path | urlencode }}">download</a></td></tr>
+      {% for check in summary.onboarding.checks %}
+      <tr>
+        <td>{{ check.label }}</td>
+        <td><span class="pill {{ 'ok' if check.ok else 'warn' }}">{{ "Done" if check.ok else "Pending" }}</span></td>
+      </tr>
       {% endfor %}
     </table>
+  </section>
 </div>
-<div class="card" style="margin-top:16px;">
-  <div class="section-title"><h3>Latest Jobs</h3></div>
-  <table>
-    <thead><tr><th>ID</th><th>Type</th><th>Status</th><th>Requested By</th><th>Requested At</th></tr></thead>
-    <tbody>
+
+<section class="card" style="margin-top:14px;">
+  <div class="section-title">
+    <div>
+      <h2>Latest Jobs</h2>
+      <p>Recent runs for this supplier.</p>
+    </div>
+  </div>
+  <div class="job-list">
     {% for job in jobs %}
-      <tr>
-        <td><a href="/jobs/{{ job.id }}">{{ job.id }}</a></td>
-        <td>{{ job.job_type }}</td>
-        <td>{{ job.status }}</td>
-        <td>{{ job.requested_by }}</td>
-        <td>{{ job.requested_at }}</td>
-      </tr>
+    <div class="job-row">
+      <a href="/jobs/{{ job.id }}">#{{ job.id }}</a>
+      <div>
+        {% if job.job_type == "scrape_only" %}Scrape
+        {% elif job.job_type == "sync_from_export" %}Sync
+        {% elif job.job_type == "scrape_and_sync" %}Scrape + Sync
+        {% elif job.job_type == "scrape_dry_run" %}Dry Run
+        {% else %}{{ job.job_type }}
+        {% endif %}
+      </div>
+      <div><span class="pill {{ 'ok' if job.status == 'succeeded' else ('bad' if job.status == 'failed' else ('warn' if job.status in ['running','queued'] else '')) }}">{{ job.status }}</span></div>
+      <div class="muted tiny">{{ job.requested_at }}</div>
+    </div>
+    {% else %}
+    <p class="soft">No jobs yet.</p>
     {% endfor %}
-    </tbody>
-  </table>
+  </div>
+</section>
+
+<div class="grid cols-2" style="margin-top:14px;">
+  <section class="card">
+    <div class="section-title">
+      <div>
+        <h2>Artifacts</h2>
+        <p>Latest generated files and summaries.</p>
+      </div>
+    </div>
+    <table>
+      {% for key, path in summary.output_paths.items() %}
+      <tr><td>{{ key }}</td><td><a href="/artifacts?path={{ path | urlencode }}">Download</a></td></tr>
+      {% endfor %}
+    </table>
+  </section>
+  <section class="card">
+    <div class="section-title">
+      <div>
+        <h2>Implementation</h2>
+        <p>Expected code locations for this supplier.</p>
+      </div>
+    </div>
+    <div class="data-list">
+      <div class="data-row"><div class="data-label">API base</div><div class="data-value truncate">{{ supplier.ybm_api_base }}</div></div>
+      <div class="data-row"><div class="data-label">Output</div><div class="data-value truncate">{{ supplier.output_dir }}</div></div>
+      <div class="data-row"><div class="data-label">Scraper</div><div class="data-value truncate mono tiny">{{ supplier.structure.scraper_path }}</div></div>
+      <div class="data-row"><div class="data-label">Transformer</div><div class="data-value truncate mono tiny">{{ supplier.structure.transformer_path }}</div></div>
+      <div class="data-row"><div class="data-label">Fixtures</div><div class="data-value truncate mono tiny">{{ supplier.structure.fixtures_path }}</div></div>
+    </div>
+  </section>
 </div>
+
+<section class="card" style="margin-top:14px;">
+  <div class="section-title">
+    <div>
+      <h2>Advanced</h2>
+      <p>Debugging and preview tools that are useful occasionally, but not part of the normal run flow.</p>
+    </div>
+  </div>
+  <div class="actions">
+    <button class="ghost" onclick="queueJob('{{ supplier.supplier_slug }}','dry-run')">Dry Run</button>
+  </div>
+  <p class="soft" style="margin-top:12px;">
+    Dry Run performs scrape, transformation, validation, and a simulated sync diff without uploading anything to YourBarMate.
+  </p>
+</section>
+
 <script>
 async function queueJob(slug, action) {
   const response = await fetch(`/api/suppliers/${slug}/jobs/${action}`, {method: 'POST'});

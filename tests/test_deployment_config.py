@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import tempfile
 import unittest
@@ -53,6 +54,7 @@ class DeploymentConfigTests(unittest.TestCase):
                         base_url="https://example.com",
                         ybm_token_env_var="YBM_TOKEN_DEMO",
                         output_dir="output/demo",
+                        catalog_update_policy="keep_existing",
                         schedule={"frequency": "weekly", "weekday": "friday", "time": "04:15"},
                     )
                 ],
@@ -62,6 +64,34 @@ class DeploymentConfigTests(unittest.TestCase):
             self.assertEqual(len(loaded), 1)
             self.assertEqual(loaded[0].supplier_slug, "demo")
             self.assertEqual(loaded[0].schedule["weekday"], "friday")
+            self.assertEqual(loaded[0].catalog_update_policy, "keep_existing")
+
+    def test_supplier_configs_can_load_from_inline_json_env(self) -> None:
+        inline = {
+            "suppliers": [
+                {
+                    "supplier_slug": "demo",
+                    "enabled": True,
+                    "scraper_adapter": "swissbox",
+                    "base_url": "https://example.com",
+                    "ybm_token_env_var": "YBM_TOKEN_DEMO",
+                    "output_dir": "output/demo",
+                    "catalog_update_policy": "keep_existing",
+                }
+            ]
+        }
+        previous = os.environ.get("SUPPLIER_CONFIG_JSON")
+        os.environ["SUPPLIER_CONFIG_JSON"] = json.dumps(inline)
+        try:
+            loaded = load_supplier_configs()
+            self.assertEqual(len(loaded), 1)
+            self.assertEqual(loaded[0].supplier_slug, "demo")
+            self.assertEqual(loaded[0].catalog_update_policy, "keep_existing")
+        finally:
+            if previous is None:
+                os.environ.pop("SUPPLIER_CONFIG_JSON", None)
+            else:
+                os.environ["SUPPLIER_CONFIG_JSON"] = previous
 
     def test_github_actions_and_deploy_script_exist(self) -> None:
         root = Path(__file__).resolve().parents[1]
@@ -84,3 +114,12 @@ class DeploymentConfigTests(unittest.TestCase):
         config = WebAppConfig(job_backend="ecs_fargate")
         with self.assertRaisesRegex(ValueError, "ecs_backend"):
             config.validate_runtime()
+
+    def test_worker_task_definition_template_uses_four_vcpu_shape(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        task_def = (root / "deploy" / "aws" / "ecs-task-definition.worker.json").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('"cpu": "4096"', task_def)
+        self.assertIn('"memory": "8192"', task_def)
+        self.assertIn('"stopTimeout": 10', task_def)

@@ -9,7 +9,7 @@ fi
 AWS_REGION=${AWS_REGION:-eu-central-1}
 AWS_ACCOUNT_ID=${AWS_ACCOUNT_ID:-}
 ECR_REPOSITORY=${ECR_REPOSITORY:-yourbarmate-scraper-worker}
-ECS_CLUSTER=${ECS_CLUSTER:-yourbarmate-scraper-cluster}
+ECS_CLUSTER=${ECS_CLUSTER:-yourbarmate-scraper-worker}
 TASK_FAMILY=${TASK_FAMILY:-yourbarmate-scraper-worker}
 CONTAINER_NAME=${CONTAINER_NAME:-scraper-worker}
 LOG_GROUP=${LOG_GROUP:-/ecs/yourbarmate-scraper-worker}

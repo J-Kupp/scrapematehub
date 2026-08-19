@@ -33,6 +33,7 @@ def init_db(conn: sqlite3.Connection) -> None:
             requested_at TEXT NOT NULL,
             started_at TEXT,
             finished_at TEXT,
+            stop_requested_at TEXT,
             command TEXT NOT NULL,
             env_file_ref TEXT,
             run_summary_path TEXT,
@@ -40,6 +41,7 @@ def init_db(conn: sqlite3.Connection) -> None:
             log_path TEXT,
             error_message TEXT,
             exit_code INTEGER,
+            local_process_pid INTEGER,
             backend TEXT NOT NULL DEFAULT 'local_subprocess',
             remote_job_id TEXT,
             remote_status TEXT,
@@ -73,6 +75,8 @@ def init_db(conn: sqlite3.Connection) -> None:
         "cloudwatch_log_group": "ALTER TABLE jobs ADD COLUMN cloudwatch_log_group TEXT",
         "cloudwatch_log_stream": "ALTER TABLE jobs ADD COLUMN cloudwatch_log_stream TEXT",
         "artifact_prefix": "ALTER TABLE jobs ADD COLUMN artifact_prefix TEXT",
+        "stop_requested_at": "ALTER TABLE jobs ADD COLUMN stop_requested_at TEXT",
+        "local_process_pid": "ALTER TABLE jobs ADD COLUMN local_process_pid INTEGER",
     }
     for name, statement in migration_columns.items():
         if name not in columns:

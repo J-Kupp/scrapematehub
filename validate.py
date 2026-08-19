@@ -69,4 +69,10 @@ def validate_rows(
         warnings.append(f"{len(failures)} discovered product URLs failed to parse.")
     if not exported_urls:
         warnings.append("No product images were exported.")
-    return ValidationResult(errors=errors, warnings=warnings)
+    return ValidationResult(
+        errors=errors,
+        warnings=warnings,
+        performed=True,
+        row_count=len(rows),
+        passed_row_count=len(rows) if not errors else 0,
+    )

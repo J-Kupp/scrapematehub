@@ -122,6 +122,7 @@ class SupplierConfig:
     base_url: str
     ybm_token_env_var: str
     output_dir: str
+    catalog_update_policy: str = "delete_missing"
     schedule: dict[str, str] = field(default_factory=dict)
     ybm_api_base: str = "https://connect.yourbarmate.com/api"
     scrape_settings: dict[str, Any] = field(default_factory=dict)
@@ -141,6 +142,9 @@ class SupplierConfig:
 class ValidationResult:
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    performed: bool = True
+    row_count: int = 0
+    passed_row_count: int = 0
 
     @property
     def is_valid(self) -> bool:
@@ -183,6 +187,7 @@ class SupplierRunResult:
 class SyncSummary:
     supplier_slug: str
     dry_run: bool
+    old_catalog_products: int = 0
     created_categories: int = 0
     updated_categories: int = 0
     created_products: int = 0

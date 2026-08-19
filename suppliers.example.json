@@ -8,6 +8,7 @@
       "ybm_api_base": "https://connect.yourbarmate.com/api",
       "ybm_token_env_var": "YBM_TOKEN_SWISSBOX",
       "output_dir": "output/swissbox",
+      "catalog_update_policy": "delete_missing",
       "schedule": {
         "frequency": "weekly",
         "weekday": "monday",
@@ -17,6 +18,27 @@
         "concurrency": 2,
         "min_delay_seconds": 0.15,
         "max_delay_seconds": 0.45
+      }
+    },
+    {
+      "supplier_slug": "gourmador",
+      "enabled": false,
+      "scraper_adapter": "gourmador",
+      "base_url": "https://shop.gourmadorzollikofen.ch",
+      "ybm_api_base": "https://connect.yourbarmate.com/api",
+      "ybm_token_env_var": "YBM_TOKEN_GOURMADOR",
+      "output_dir": "output/gourmador",
+      "catalog_update_policy": "delete_missing",
+      "schedule": {
+        "frequency": "weekly",
+        "weekday": "monday",
+        "time": "04:30"
+      },
+      "scrape_settings": {
+        "category_concurrency": 2,
+        "concurrency": 4,
+        "min_delay_seconds": 0.1,
+        "max_delay_seconds": 0.3
       }
     }
   ]

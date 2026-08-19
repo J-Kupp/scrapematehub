@@ -1,20 +1,28 @@
 {% extends "base.html" %}
 {% block header %}
-<div class="hero">
+<div class="page-header">
   <div>
     <h1>{{ title }}</h1>
-    <p class="muted">Define scraper, schedule, and API connection metadata for a supplier using a setup flow that feels closer to the YourBarMate product style.</p>
+    <p>Supplier configuration, schedule, and scraper runtime settings.</p>
   </div>
 </div>
 {% endblock %}
 {% block content %}
-{% if notice %}<p class="notice">{{ notice }}</p>{% endif %}
-{% if error %}<p class="error">{{ error }}</p>{% endif %}
+{% if notice %}<div class="notice">{{ notice }}</div>{% endif %}
+{% if error %}<div class="error">{{ error }}</div>{% endif %}
 {% set schedule = supplier.schedule if supplier else {} %}
 {% set scrape = supplier.scrape_settings if supplier else {} %}
-<div class="card">
-  <form method="post" action="{{ '/suppliers/new' if form_mode == 'create' else '/suppliers/' ~ supplier.supplier_slug ~ '/edit' }}">
-    <div class="grid cols-2">
+{% set catalog_update_policy = supplier.catalog_update_policy if supplier else 'delete_missing' %}
+
+<form method="post" action="{{ '/suppliers/new' if form_mode == 'create' else '/suppliers/' ~ supplier.supplier_slug ~ '/edit' }}">
+  <div class="grid cols-2">
+    <section class="card">
+      <div class="section-title">
+        <div>
+          <h2>Supplier Identity</h2>
+          <p>How this supplier appears in the dashboard and which adapter it uses.</p>
+        </div>
+      </div>
       <label>Supplier slug
         <input type="text" name="supplier_slug" required value="{{ supplier.supplier_slug if supplier else '' }}" {% if form_mode == 'edit' %}readonly{% endif %} />
       </label>
@@ -30,6 +38,15 @@
       <label>Base URL
         <input type="url" name="base_url" required value="{{ supplier.base_url if supplier else '' }}" />
       </label>
+    </section>
+
+    <section class="card">
+      <div class="section-title">
+        <div>
+          <h2>API Connection</h2>
+          <p>Token reference and YourBarMate API endpoint.</p>
+        </div>
+      </div>
       <label>YourBarMate token env var
         <input type="text" name="ybm_token_env_var" required value="{{ supplier.token_env_var if supplier else '' }}" />
       </label>
@@ -39,6 +56,33 @@
       <label>Output directory
         <input type="text" name="output_dir" required value="{{ supplier.output_dir if supplier else 'output/' }}" />
       </label>
+    </section>
+
+    <section class="card">
+      <div class="section-title">
+        <div>
+          <h2>Catalog Updates</h2>
+          <p>Choose what happens to items that are present in YourBarMate but missing from the latest supplier run.</p>
+        </div>
+      </div>
+      <label>Missing item policy
+        <select name="catalog_update_policy">
+          <option value="delete_missing" {% if catalog_update_policy == 'delete_missing' %}selected{% endif %}>Delete missing items</option>
+          <option value="keep_existing" {% if catalog_update_policy == 'keep_existing' %}selected{% endif %}>Keep old items</option>
+        </select>
+      </label>
+      <p class="soft tiny" style="margin-top:4px;">
+        "Delete missing" means the sync will inactivate items that are no longer scraped. "Keep old items" leaves them untouched and only updates matches/adds new items.
+      </p>
+    </section>
+
+    <section class="card">
+      <div class="section-title">
+        <div>
+          <h2>Schedule</h2>
+          <p>Internal scheduler settings for automatic scrape and sync runs.</p>
+        </div>
+      </div>
       <label>Schedule enabled
         <select name="schedule_enabled">
           <option value="on" {% if schedule.get('frequency', 'weekly') != 'disabled' %}selected{% endif %}>Yes</option>
@@ -60,6 +104,15 @@
       <label>Time
         <input type="time" name="schedule_time" value="{{ schedule.get('time', '03:30') }}" />
       </label>
+    </section>
+
+    <section class="card">
+      <div class="section-title">
+        <div>
+          <h2>Scraper Tuning</h2>
+          <p>Optional pacing controls for supplier-specific scraping behavior.</p>
+        </div>
+      </div>
       <label>Concurrency
         <input type="number" min="1" name="concurrency" value="{{ scrape.get('concurrency', '') }}" />
       </label>
@@ -69,25 +122,30 @@
       <label>Max delay seconds
         <input type="number" min="0" step="0.01" name="max_delay_seconds" value="{{ scrape.get('max_delay_seconds', '') }}" />
       </label>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:14px;">
+    <div class="section-title">
+      <div>
+        <h2>Save Configuration</h2>
+        <p>The app stores config and schedules. Scraper and transformer code still live in Git.</p>
+      </div>
+      <div class="actions">
+        <button type="submit">{{ 'Create Supplier' if form_mode == 'create' else 'Save Changes' }}</button>
+        {% if supplier %}
+        <a class="button-link ghost" href="/suppliers/{{ supplier.supplier_slug }}">Back to Supplier</a>
+        {% else %}
+        <a class="button-link ghost" href="/">Back to Dashboard</a>
+        {% endif %}
+      </div>
     </div>
-    <div class="actions">
-      <button type="submit">{{ 'Create Supplier' if form_mode == 'create' else 'Save Changes' }}</button>
-      {% if supplier %}
-      <a class="button-link ghost" href="/suppliers/{{ supplier.supplier_slug }}">Back to Supplier</a>
-      {% else %}
-      <a class="button-link ghost" href="/">Back to Dashboard</a>
-      {% endif %}
-    </div>
-  </form>
+  </section>
+
   <datalist id="adapter-options">
     {% for adapter in available_adapters %}
     <option value="{{ adapter }}"></option>
     {% endfor %}
   </datalist>
-</div>
-<div class="card" style="margin-top:16px;">
-  <h3>Setup Guidance</h3>
-  <p>Creating a supplier here adds the configuration entry and schedule, but jobs will only run successfully if the named scraper adapter already exists in the codebase and the referenced token environment variable is present on the server.</p>
-  <p>That makes this page useful both for fully implemented suppliers and for staging future supplier integrations before the scraper code itself is added.</p>
-</div>
+</form>
 {% endblock %}
