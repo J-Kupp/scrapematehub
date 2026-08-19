@@ -325,6 +325,16 @@ Recommended supplier PR checklist:
 - dry-run or fixture-based validation coverage included
 - supplier-specific caveats documented
 
+### Walker onboarding
+
+Walker is registered with the adapter name `walker` and token environment variable `YBM_TOKEN_WALKER`.
+The supplier remains disabled until both of these external requirements are met:
+
+- Walker grants explicit permission for automated catalogue access; the public `robots.txt` currently disallows all crawlers.
+- `YBM_TOKEN_WALKER` is added to the production secrets backend. The dashboard stores only the environment-variable name, never the token value.
+
+The public Walker shop does not expose prices without a Walker shop login. The adapter can parse public product metadata and packaging, but price-complete imports require an approved authenticated data source.
+
 The control panel can be used before code exists:
 - create the supplier config and schedule
 - assign the expected token env var

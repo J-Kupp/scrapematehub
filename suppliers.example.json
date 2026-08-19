@@ -18,6 +18,24 @@
         "min_delay_seconds": 0.15,
         "max_delay_seconds": 0.45
       }
+    },
+    {
+      "supplier_slug": "walker",
+      "enabled": false,
+      "scraper_adapter": "walker",
+      "base_url": "https://shop.walker.swiss",
+      "ybm_api_base": "https://connect.yourbarmate.com/api",
+      "ybm_token_env_var": "YBM_TOKEN_WALKER",
+      "output_dir": "output/walker",
+      "schedule": {
+        "frequency": "disabled"
+      },
+      "scrape_settings": {
+        "concurrency": 2,
+        "min_delay_seconds": 0.5,
+        "max_delay_seconds": 1.0,
+        "allow_robots_override": false
+      }
     }
   ]
 }
