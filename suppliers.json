@@ -62,6 +62,24 @@
         "fetch_external_pages": true,
         "discover_by_categories": true
       }
+    },
+    {
+      "supplier_slug": "laenggasstee",
+      "enabled": false,
+      "scraper_adapter": "laenggasstee",
+      "base_url": "https://laenggasstee.ch",
+      "ybm_api_base": "https://connect.yourbarmate.com/api",
+      "ybm_token_env_var": "YBM_TOKEN_LAENGGASSTEE",
+      "output_dir": "output/laenggasstee",
+      "catalog_update_policy": "keep_existing",
+      "schedule": {
+        "frequency": "disabled"
+      },
+      "scrape_settings": {
+        "page_size": 100,
+        "max_pages": 0,
+        "max_products": 0
+      }
     }
   ]
 }
