@@ -126,6 +126,15 @@ PLAYWRIGHT_BROWSERS_PATH=
 
 The token value is never stored in the supplier config.
 
+### Walker catalogue discovery
+
+Walker advertises more products in its catalogue than its ungrouped
+`Alle Produkte` pagination consistently returns. The Walker adapter therefore
+discovers product URLs through the public Warengruppen and Unterwarengruppen
+navigation, then de-duplicates the resulting detail URLs before scraping them.
+Set `scrape_settings.discover_by_categories` to `false` only when diagnosing the
+upstream global listing.
+
 Optional shared secrets mode:
 
 ```env

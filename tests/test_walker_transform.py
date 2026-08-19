@@ -3,6 +3,7 @@ from __future__ import annotations
 import unittest
 
 from adapters.walker.transform import (
+    extract_category_links,
     extract_next_listing_url,
     extract_product_links,
     parse_product_record,
@@ -36,6 +37,24 @@ class WalkerTransformTests(unittest.TestCase):
             [
                 "https://shop.walker.swiss/de/Alle-Produkte/Bar-456.html",
                 "https://shop.walker.swiss/de/Alle-Produkte/Foo-123.html",
+            ],
+        )
+
+    def test_extract_category_links_keeps_category_pages_and_excludes_products(self) -> None:
+        html = """
+        <nav>
+          <a href="/de/alle-produkte/milchprodukte/">Milchprodukte</a>
+          <a href="/de/alle-produkte/milchprodukte/kaese/">Käse</a>
+          <a href="/de/alle-produkte/milchprodukte/kaese/Raclette-123.html">Product</a>
+          <a href="/de/guide/">Guide</a>
+        </nav>
+        """
+
+        self.assertEqual(
+            extract_category_links(html, "https://shop.walker.swiss"),
+            [
+                "https://shop.walker.swiss/de/alle-produkte/milchprodukte/",
+                "https://shop.walker.swiss/de/alle-produkte/milchprodukte/kaese/",
             ],
         )
 

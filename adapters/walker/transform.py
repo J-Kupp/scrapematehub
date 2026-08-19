@@ -64,6 +64,25 @@ def extract_product_links(html: str, base_url: str) -> list[str]:
     return sorted(urls)
 
 
+def extract_category_links(html: str, base_url: str) -> list[str]:
+    """Return Walker category and subcategory listing pages, never product detail URLs."""
+    soup = BeautifulSoup(html, "lxml")
+    listing_prefix = "/de/alle-produkte/"
+    urls: set[str] = set()
+    for anchor in soup.select("a[href]"):
+        url = canonicalize_url(absolute_url(base_url, anchor.get("href")))
+        parsed = urlparse(url)
+        path = parsed.path.lower()
+        if (
+            path.startswith(listing_prefix)
+            and path.endswith("/")
+            and not parsed.query
+            and not product_candidate_from_url(url)
+        ):
+            urls.add(url)
+    return sorted(urls)
+
+
 def extract_next_listing_url(html: str, base_url: str) -> str:
     soup = BeautifulSoup(html, "lxml")
     for node in soup.select("[data-op-href]"):

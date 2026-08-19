@@ -59,7 +59,8 @@
         "concurrency": 4,
         "min_delay_seconds": 0.1,
         "max_delay_seconds": 0.3,
-        "fetch_external_pages": true
+        "fetch_external_pages": true,
+        "discover_by_categories": true
       }
     }
   ]
