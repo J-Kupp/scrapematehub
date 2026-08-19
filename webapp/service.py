@@ -75,7 +75,7 @@ def _save_aws_secrets_manager_secret(
     except ImportError as exc:
         raise RuntimeError("boto3 is required for AWS Secrets Manager token storage.") from exc
 
-    region = app_config.ecs_backend.region or os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION")
+    region = app_config.ecs_backend.region or app_config.resolved_shared_secrets_region()
     client = boto3.client("secretsmanager", region_name=region or None)
     try:
         response = client.get_secret_value(SecretId=secret_id)
