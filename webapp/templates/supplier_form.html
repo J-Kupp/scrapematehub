@@ -44,12 +44,18 @@
       <div class="section-title">
         <div>
           <h2>API Connection</h2>
-          <p>Token reference and YourBarMate API endpoint.</p>
+          <p>Token reference, optional dashboard-managed token value, and YourBarMate API endpoint.</p>
         </div>
       </div>
       <label>YourBarMate token env var
         <input type="text" name="ybm_token_env_var" required value="{{ supplier.token_env_var if supplier else '' }}" />
       </label>
+      <label>Token value
+        <input type="password" name="ybm_token_value" value="" autocomplete="new-password" placeholder="{{ 'Leave blank to keep current token' if form_mode == 'edit' else 'Paste token to save it in the dashboard secret store' }}" />
+      </label>
+      <p class="soft tiny" style="margin-top:4px;">
+        The value is stored in the dashboard-managed secret override file and is never shown again in plain text. Leave this blank during edits if you do not want to change the saved token.
+      </p>
       <label>YourBarMate API base
         <input type="url" name="ybm_api_base" value="{{ supplier.ybm_api_base if supplier else 'https://connect.yourbarmate.com/api' }}" />
       </label>

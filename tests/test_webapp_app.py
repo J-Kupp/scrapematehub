@@ -108,6 +108,7 @@ class WebAppAppTests(unittest.TestCase):
                         "scraper_adapter": "swissbox",
                         "base_url": "https://example.com",
                         "ybm_token_env_var": "YBM_TOKEN_DEMO",
+                        "ybm_token_value": "demo-token-123",
                         "output_dir": "output/demo",
                         "ybm_api_base": "https://connect.yourbarmate.com/api",
                         "schedule_enabled": "on",
@@ -123,9 +124,17 @@ class WebAppAppTests(unittest.TestCase):
                 self.assertEqual(new_supplier_response.status_code, 200)
                 self.assertIn("Supplier created.", new_supplier_response.text)
                 self.assertIn("demo", new_supplier_response.text)
+                self.assertEqual(os.environ["YBM_TOKEN_DEMO"], "demo-token-123")
+                dashboard_secret_path = root / "dashboard-secrets.env"
+                self.assertTrue(dashboard_secret_path.exists())
+                self.assertIn(
+                    "YBM_TOKEN_DEMO=demo-token-123",
+                    dashboard_secret_path.read_text(encoding="utf-8"),
+                )
 
                 api_supplier_response = client.get("/api/suppliers/demo")
                 self.assertEqual(api_supplier_response.status_code, 200)
+                self.assertTrue(api_supplier_response.json()["secret_present"])
                 self.assertEqual(
                     api_supplier_response.json()["onboarding"]["stage"],
                     "Config only",

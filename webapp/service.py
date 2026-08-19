@@ -23,6 +23,43 @@ def read_json_file(path: Path) -> dict[str, Any]:
         return {}
 
 
+def _normalize_env_value(value: str) -> str:
+    normalized = value.strip()
+    if not normalized:
+        raise ValueError("Token value cannot be empty.")
+    if "\n" in normalized or "\r" in normalized:
+        raise ValueError("Token value must be a single line.")
+    return normalized
+
+
+def save_dashboard_secret(app_config: WebAppConfig, env_var_name: str, secret_value: str) -> Path:
+    env_var = env_var_name.strip()
+    if not env_var:
+        raise ValueError("Token env var cannot be empty.")
+    value = _normalize_env_value(secret_value)
+    path = app_config.resolved_dashboard_secrets_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    lines = path.read_text(encoding="utf-8").splitlines() if path.exists() else []
+    updated_lines: list[str] = []
+    replaced = False
+    for line in lines:
+        stripped = line.strip()
+        if stripped and not stripped.startswith("#") and "=" in line:
+            key, _existing = line.split("=", 1)
+            if key.strip() == env_var:
+                updated_lines.append(f"{env_var}={value}")
+                replaced = True
+                continue
+        updated_lines.append(line)
+    if not replaced:
+        updated_lines.append(f"{env_var}={value}")
+
+    path.write_text("\n".join(updated_lines) + "\n", encoding="utf-8")
+    os.environ[env_var] = value
+    return path
+
+
 def read_release_metadata(app_config: WebAppConfig) -> dict[str, Any]:
     release_path = app_config.resolved_db_path().parent / "release.json"
     payload = read_json_file(release_path)
@@ -148,6 +185,7 @@ def system_health(app_config: WebAppConfig) -> dict[str, Any]:
         "scheduler_mode": app_config.scheduler_mode,
         "db_path": str(app_config.resolved_db_path()),
         "env_file": str(app_config.resolved_env_path()),
+        "dashboard_secrets_file": str(app_config.resolved_dashboard_secrets_path()),
         "job_backend": app_config.job_backend,
         "ecs_backend": {
             "region": app_config.ecs_backend.region,

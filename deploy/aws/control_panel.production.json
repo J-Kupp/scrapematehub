@@ -9,7 +9,7 @@
   "scheduler_mode": "internal",
   "job_backend": "local_subprocess",
   "session_same_site": "lax",
-  "session_https_only": true,
+  "session_https_only": false,
   "forwarded_allow_ips": "127.0.0.1",
   "enforce_non_placeholder_secrets": true,
   "ecs_backend": {

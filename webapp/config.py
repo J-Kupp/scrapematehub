@@ -42,6 +42,7 @@ class WebAppConfig:
     supplier_config_path: str = str(SUPPLIER_CONFIG_PATH)
     session_secret_env_var: str = "CONTROL_PANEL_SESSION_SECRET"
     env_file: str = ".env.local"
+    dashboard_secrets_file: str = ""
     scheduler_enabled: bool = True
     scheduler_mode: str = "internal"
     session_same_site: str = "lax"
@@ -72,6 +73,14 @@ class WebAppConfig:
         if not path.is_absolute():
             path = PROJECT_ROOT / path
         return path
+
+    def resolved_dashboard_secrets_path(self) -> Path:
+        if self.dashboard_secrets_file.strip():
+            path = Path(self.dashboard_secrets_file)
+            if not path.is_absolute():
+                path = PROJECT_ROOT / path
+            return path
+        return self.resolved_db_path().parent / "dashboard-secrets.env"
 
     def resolved_artifact_roots(self) -> list[Path]:
         roots: list[Path] = []
@@ -152,6 +161,9 @@ def load_webapp_config(config_path: Path | None = None) -> WebAppConfig:
                 "session_secret_env_var", config.session_secret_env_var
             ),
             env_file=payload.get("env_file", config.env_file),
+            dashboard_secrets_file=payload.get(
+                "dashboard_secrets_file", config.dashboard_secrets_file
+            ),
             scheduler_enabled=bool(
                 payload.get("scheduler_enabled", config.scheduler_enabled)
             ),
@@ -190,5 +202,16 @@ def load_webapp_config(config_path: Path | None = None) -> WebAppConfig:
             ),
         )
     load_env_file(config.resolved_env_path())
+    secrets_path = config.resolved_dashboard_secrets_path()
+    if secrets_path.exists():
+        for raw_line in secrets_path.read_text(encoding="utf-8").splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            key = key.strip()
+            value = value.strip().strip("'").strip('"')
+            if key and value:
+                os.environ[key] = value
     config.validate_runtime()
     return config

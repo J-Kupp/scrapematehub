@@ -26,6 +26,7 @@ from .service import (
     parse_bool_form,
     read_json_file,
     resolve_allowed_artifact,
+    save_dashboard_secret,
     supplier_by_slug,
     supplier_health_summary,
     system_health,
@@ -369,7 +370,12 @@ def create_app(config_path: Path | None = None) -> FastAPI:
             ),
         )
 
-    def _save_supplier_and_reload_scheduler(updated_supplier: dict[str, Any], *, create: bool) -> None:
+    def _save_supplier_and_reload_scheduler(
+        updated_supplier: dict[str, Any],
+        *,
+        create: bool,
+        ybm_token_value: str = "",
+    ) -> None:
         configs = load_supplier_configs(supplier_config_path)
         if create:
             if any(config.supplier_slug == updated_supplier["supplier_slug"] for config in configs):
@@ -388,6 +394,12 @@ def create_app(config_path: Path | None = None) -> FastAPI:
                 raise KeyError("Supplier not found.")
             configs = new_configs
         save_supplier_configs(configs, config_path=supplier_config_path)
+        if ybm_token_value.strip():
+            save_dashboard_secret(
+                app_config,
+                updated_supplier["ybm_token_env_var"],
+                ybm_token_value,
+            )
         job_runner.reload_scheduler(
             enabled=app_config.scheduler_enabled,
             mode=app_config.scheduler_mode,
@@ -401,6 +413,7 @@ def create_app(config_path: Path | None = None) -> FastAPI:
         scraper_adapter: str = Form(...),
         base_url: str = Form(...),
         ybm_token_env_var: str = Form(...),
+        ybm_token_value: str = Form(""),
         output_dir: str = Form(...),
         catalog_update_policy: str = Form("delete_missing"),
         ybm_api_base: str = Form("https://connect.yourbarmate.com/api"),
@@ -433,6 +446,7 @@ def create_app(config_path: Path | None = None) -> FastAPI:
                     "max_delay_seconds": max_delay_seconds,
                 },
                 create=True,
+                ybm_token_value=ybm_token_value,
             )
         except Exception as exc:
             return RedirectResponse(
@@ -451,6 +465,7 @@ def create_app(config_path: Path | None = None) -> FastAPI:
         scraper_adapter: str = Form(...),
         base_url: str = Form(...),
         ybm_token_env_var: str = Form(...),
+        ybm_token_value: str = Form(""),
         output_dir: str = Form(...),
         catalog_update_policy: str = Form("delete_missing"),
         ybm_api_base: str = Form("https://connect.yourbarmate.com/api"),
@@ -483,6 +498,7 @@ def create_app(config_path: Path | None = None) -> FastAPI:
                     "max_delay_seconds": max_delay_seconds,
                 },
                 create=False,
+                ybm_token_value=ybm_token_value,
             )
         except Exception as exc:
             return RedirectResponse(

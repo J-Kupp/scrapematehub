@@ -16,6 +16,7 @@ from webapp.jobs import queue_job
 from webapp.service import (
     onboarding_status,
     resolve_allowed_artifact,
+    save_dashboard_secret,
     supplier_health_summary,
     system_health,
 )
@@ -177,6 +178,19 @@ class WebAppServiceTests(unittest.TestCase):
         self.assertEqual(health["job_backend"], "local_subprocess")
         self.assertFalse(health["release"]["available"])
         self.assertFalse(health["ecs_runtime_status"]["enabled"])
+        self.assertTrue(health["dashboard_secrets_file"].endswith("dashboard-secrets.env"))
+
+    def test_save_dashboard_secret_writes_override_file_and_process_env(self) -> None:
+        app_config = WebAppConfig(
+            db_path=str(self.root / "control_panel" / "control_panel.db"),
+            bootstrap_users=[BootstrapUser(username="admin", password_env_var="NOOP")],
+        )
+        path = save_dashboard_secret(app_config, "YBM_TOKEN_WALKER", "walker-token-123")
+
+        self.assertEqual(path, app_config.resolved_dashboard_secrets_path())
+        self.assertTrue(path.exists())
+        self.assertIn("YBM_TOKEN_WALKER=walker-token-123", path.read_text(encoding="utf-8"))
+        self.assertEqual(os.environ["YBM_TOKEN_WALKER"], "walker-token-123")
 
     def test_system_health_reports_release_and_ecs_runtime_status(self) -> None:
         control_panel_dir = self.root / "control_panel"
