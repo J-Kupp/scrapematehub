@@ -2,7 +2,7 @@ playwright==1.60.0
 beautifulsoup4==4.14.3
 lxml==6.1.1
 pydantic==2.13.4
-tenacity==9.1.4
+tenacity==9.1.2
 aiofiles==25.1.0
 fastapi==0.116.1
 uvicorn==0.35.0
