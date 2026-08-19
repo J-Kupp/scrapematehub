@@ -29,7 +29,8 @@ class WebAppAppTests(unittest.TestCase):
         self.assertIn("ERROR Failed to parse variant price", summary)
         self.assertIn("Traceback", summary)
 
-    def test_login_and_protected_api_flow(self) -> None:
+    @patch("webapp.app.validate_ybm_token", return_value=1)
+    def test_login_and_protected_api_flow(self, _validate_ybm_token) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             db_path = root / "control_panel.db"

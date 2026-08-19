@@ -30,6 +30,7 @@ from .service import (
     supplier_by_slug,
     supplier_health_summary,
     system_health,
+    validate_ybm_token,
 )
 
 
@@ -433,13 +434,17 @@ def create_app(config_path: Path | None = None) -> FastAPI:
             if not replaced:
                 raise KeyError("Supplier not found.")
             configs = new_configs
-        save_supplier_configs(configs, config_path=supplier_config_path)
         if ybm_token_value.strip():
+            _category_count = validate_ybm_token(
+                updated_supplier["ybm_api_base"],
+                ybm_token_value,
+            )
             save_dashboard_secret(
                 app_config,
                 updated_supplier["ybm_token_env_var"],
                 ybm_token_value,
             )
+        save_supplier_configs(configs, config_path=supplier_config_path)
         job_runner.reload_scheduler(
             enabled=app_config.scheduler_enabled,
             mode=app_config.scheduler_mode,
@@ -493,8 +498,9 @@ def create_app(config_path: Path | None = None) -> FastAPI:
                 f"/suppliers/new?error={str(exc).replace(' ', '+')}",
                 status_code=302,
             )
+        notice = "Supplier created."
         return RedirectResponse(
-            f"/suppliers/{supplier_slug}?notice=Supplier+created.",
+            f"/suppliers/{supplier_slug}?notice={notice.replace(' ', '+')}",
             status_code=302,
         )
 
@@ -545,8 +551,11 @@ def create_app(config_path: Path | None = None) -> FastAPI:
                 f"/suppliers/{supplier_slug}/edit?error={str(exc).replace(' ', '+')}",
                 status_code=302,
             )
+        notice = "Supplier updated."
+        if ybm_token_value.strip():
+            notice = "Supplier updated. YourBarMate token verified."
         return RedirectResponse(
-            f"/suppliers/{supplier_slug}?notice=Supplier+updated.",
+            f"/suppliers/{supplier_slug}?notice={notice.replace(' ', '+')}",
             status_code=302,
         )
 
