@@ -9,7 +9,7 @@ import re
 import time
 from pathlib import Path
 
-from playwright.async_api import APIRequestContext, async_playwright
+from playwright.async_api import APIRequestContext, BrowserContext, async_playwright
 from tenacity import AsyncRetrying, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from adapters.base import SupplierAdapter
@@ -136,6 +136,12 @@ class TerraVignaAdapter(SupplierAdapter):
                 user_agent=USER_AGENT,
                 extra_http_headers=headers,
             )
+            browser = await playwright.chromium.launch(headless=True)
+            browser_context = await browser.new_context(
+                user_agent=USER_AGENT,
+                extra_http_headers=headers,
+                locale="de-CH",
+            )
             try:
                 fetcher = Fetcher(
                     context,
@@ -183,10 +189,13 @@ class TerraVignaAdapter(SupplierAdapter):
                     fetcher,
                     failures,
                     logger,
+                    browser_context,
                     force_refresh=force_refresh,
                 )
             finally:
                 await context.dispose()
+                await browser_context.close()
+                await browser.close()
 
         logger.info(
             "TerraVigna scrape completed. discovered=%s parsed=%s failures=%s",
@@ -263,6 +272,7 @@ class TerraVignaAdapter(SupplierAdapter):
         fetcher: Fetcher,
         failures: list[dict[str, str]],
         logger: logging.Logger,
+        browser_context: BrowserContext,
         *,
         force_refresh: bool,
     ) -> tuple[list, int, int]:
@@ -280,7 +290,23 @@ class TerraVignaAdapter(SupplierAdapter):
                     html = await fetcher.fetch_text(url, force_refresh=force_refresh)
                     product = parse_product_record(html, url)
                     if product is None:
-                        failures.append({"stage": "transform", "url": url, "reason": "Missing product title"})
+                        # Some AWS-origin responses are stripped for API clients while
+                        # the same public URL is available through a normal browser.
+                        page = await browser_context.new_page()
+                        try:
+                            response = await page.goto(url, wait_until="domcontentloaded", timeout=REQUEST_TIMEOUT_MS)
+                            rendered_html = await page.content()
+                            product = parse_product_record(rendered_html, url)
+                            logger.info(
+                                "TerraVigna browser detail fallback url=%s status=%s parsed=%s",
+                                url,
+                                response.status if response else "unknown",
+                                bool(product),
+                            )
+                        finally:
+                            await page.close()
+                    if product is None:
+                        failures.append({"stage": "transform", "url": url, "reason": "Missing product title after browser fallback"})
                     return product
                 finally:
                     processed += 1
