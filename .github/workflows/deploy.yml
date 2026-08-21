@@ -43,9 +43,15 @@ jobs:
             --exclude ".venv/" \
             --exclude "__pycache__/" \
             --exclude "*.pyc" \
+            --exclude "suppliers.json" \
             ./ "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:${{ secrets.EC2_APP_DIR }}/"
+
+      - name: Sync supplier defaults to EC2
+        run: |
+          rsync -az suppliers.json \
+            "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:${{ secrets.EC2_APP_DIR }}/suppliers.defaults.json"
 
       - name: Run remote deploy script
         run: |
           ssh "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" \
-            "cd '${{ secrets.EC2_APP_DIR }}' && bash deploy/aws/deploy-from-git.sh"
+            "cd '${{ secrets.EC2_APP_DIR }}' && DEPLOY_SOURCE_REVISION='${{ github.sha }}' DEPLOY_SOURCE_LABEL='github-actions' bash deploy/aws/deploy-from-git.sh"

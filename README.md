@@ -372,8 +372,14 @@ If a teammate or another Codex instance joins this repo, the default way of work
 
 What lives where:
 - Git is the source of truth for scraper code, transformers, shared platform code, tests, and deployment assets
-- the dashboard is the operations surface for supplier config, schedules, token entry, onboarding state, and job runs
+- Git's `suppliers.json` supplies defaults and newly coded suppliers during deployment
+- the dashboard is the operations source of truth for existing supplier config, schedules, enable/disable state, catalog policy, token entry, onboarding state, and job runs
 - EC2 is a deploy target only and should not be used as a manual coding environment
+
+Production deployment keeps dashboard settings in the control-panel state directory, outside the
+deployed application directory. A deployment preserves every existing supplier setting and only
+adds supplier definitions that are new in Git. This means a dashboard change, such as disabling a
+schedule, is never reset by a later code deployment.
 
 ### New supplier SOP
 
@@ -416,6 +422,10 @@ The repo now includes:
 - `.github/workflows/ci.yml`: run compile + unit tests on pull requests and pushes
 - `.github/workflows/deploy.yml`: rerun tests on `main`, sync the repo to EC2, restart the app service, and verify `/healthz`
 - `deploy/aws/deploy-from-git.sh`: remote deploy helper used by the EC2 host
+
+During deployment, `suppliers.json` is sent as Git-managed defaults, while the live dashboard
+configuration remains under `/var/lib/yourbarmate-suppliers/control_panel/suppliers.json`.
+Existing live suppliers keep their dashboard settings; definitions that are new in Git are added.
 
 The deploy helper now also writes release metadata into the control-panel state directory so the System page can show:
 - deployed revision
