@@ -33,6 +33,20 @@ def extract_product_links(html: str, base_url: str) -> list[str]:
     return sorted(url for url in urls if url.startswith(base_url.rstrip("/")))
 
 
+def extract_sitemap_product_links(xml: str, base_url: str) -> list[str]:
+    """Use image-bearing sitemap entries as a resilient product discovery fallback."""
+    soup = BeautifulSoup(xml, "xml")
+    urls: set[str] = set()
+    for entry in soup.find_all("url"):
+        location = entry.find("loc")
+        if not location or not entry.find("image"):
+            continue
+        url = canonicalize_url(normalize_space(location.get_text()))
+        if url.startswith(base_url.rstrip("/")):
+            urls.add(url)
+    return sorted(urls)
+
+
 def extract_next_listing_url(html: str, base_url: str) -> str:
     soup = BeautifulSoup(html, "lxml")
     link = soup.select_one("li.pages-item-next a[href]")

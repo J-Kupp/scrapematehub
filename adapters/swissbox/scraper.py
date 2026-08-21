@@ -327,8 +327,11 @@ class SwissboxAdapter(SupplierAdapter):
         discovered_product_urls: set[str] = set()
         diagnostics_rows: list[dict[str, str]] = []
         semaphore = asyncio.Semaphore(self.concurrency)
+        pages_seen = 0
+        logger.info("PROGRESS phase=discovering found=0 pages=0 expected=0")
 
         async def worker(url: str) -> None:
+            nonlocal pages_seen
             async with semaphore:
                 try:
                     html = await fetcher.fetch_text(url, kind="html", force_refresh=force_refresh)
@@ -337,6 +340,12 @@ class SwissboxAdapter(SupplierAdapter):
                     diagnostics_rows.append({"url": url, "error": str(exc)})
                     return
                 discovered_product_urls.update(self.parse_listing_product_urls(html))
+                pages_seen += 1
+                logger.info(
+                    "PROGRESS phase=discovering found=%s pages=%s expected=0",
+                    len(discovered_product_urls),
+                    pages_seen,
+                )
                 diagnostics = self.parse_listing_diagnostics(html)
                 diagnostics["url"] = url
                 diagnostics_rows.append(diagnostics)
@@ -363,8 +372,13 @@ class SwissboxAdapter(SupplierAdapter):
         records: list[NormalizedProduct] = []
         failures: list[dict[str, str]] = []
         semaphore = asyncio.Semaphore(self.concurrency)
+        total = len(product_urls)
+        processed = 0
+        scraped = 0
+        logger.info("PROGRESS phase=processing found=%s processed=0 scraped=0 total=%s", total, total)
 
         async def worker(url: str) -> None:
+            nonlocal processed, scraped
             async with semaphore:
                 try:
                     html = await fetcher.fetch_text(url, kind="html", force_refresh=force_refresh)
@@ -374,10 +388,20 @@ class SwissboxAdapter(SupplierAdapter):
                         logger.info("Skipped non-product URL %s", url)
                         return
                     records.append(record)
+                    scraped += 1
                     logger.info("Parsed product %s sku=%s", record.item_name, record.sku or "NO_SKU")
                 except Exception as exc:
                     failures.append({"url": url, "reason": str(exc)})
                     logger.warning("Product fetch/parse failed for %s: %s", url, exc)
+                finally:
+                    processed += 1
+                    logger.info(
+                        "PROGRESS phase=processing found=%s processed=%s scraped=%s total=%s",
+                        total,
+                        processed,
+                        scraped,
+                        total,
+                    )
 
         await asyncio.gather(*(worker(url) for url in product_urls))
         return records, failures

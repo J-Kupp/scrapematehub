@@ -48,6 +48,15 @@ Rules of the platform:
 - only `NormalizedProduct` enters shared validation, export, and API sync
 - shared import rules never live in supplier adapters unless they are truly reusable platform rules
 
+### Mandatory supplier quality gate
+
+Every adapter must provide the same operational experience: live discovery and processing
+progress in the dashboard, a non-zero discovery test fixture, detail transformation tests,
+and a clear failure or public fallback when its primary listing returns no products. The
+enforced checklist is in [AGENTS.md](/Users/jakobJakob/Documents/New%20project%202/AGENTS.md).
+CI checks that every registered adapter emits the shared `PROGRESS` markers and has
+supplier-scoped tests.
+
 Per supplier runtime artifacts:
 - `output/<supplier>/...`: CSV, raw JSONL, failures, diagnostics, correction report, run summary, sync report
 - `logs/<supplier>/scrape.log`: supplier scrape log

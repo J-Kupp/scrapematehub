@@ -6,6 +6,7 @@ from adapters.terravigna.transform import (
     extract_listing_product_total,
     extract_next_listing_url,
     extract_product_links,
+    extract_sitemap_product_links,
     parse_product_record,
 )
 
@@ -28,6 +29,18 @@ class TerraVignaTransformTests(unittest.TestCase):
         self.assertEqual(
             extract_next_listing_url(html, "https://www.terravigna.ch"),
             "https://www.terravigna.ch/shop?p=2",
+        )
+
+    def test_sitemap_discovery_keeps_only_image_bearing_product_entries(self) -> None:
+        sitemap = """
+        <urlset xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+          <url><loc>https://www.terravigna.ch/about</loc></url>
+          <url><loc>https://www.terravigna.ch/wine-one</loc><image:image><image:loc>https://cdn.example/wine.jpg</image:loc></image:image></url>
+        </urlset>
+        """
+        self.assertEqual(
+            extract_sitemap_product_links(sitemap, "https://www.terravigna.ch"),
+            ["https://www.terravigna.ch/wine-one"],
         )
 
     def test_parse_product_record_enriches_listing_data_from_detail_page(self) -> None:
