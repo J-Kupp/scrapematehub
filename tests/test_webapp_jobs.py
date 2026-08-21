@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from config import save_supplier_configs
 from models import SupplierConfig
 from webapp.config import EcsBackendConfig
 from webapp.db import connect, init_db
@@ -229,6 +230,31 @@ class WebAppJobTests(unittest.TestCase):
         self.assertEqual(runner._job_runtime_backend("sync_from_export"), "local_subprocess")
         self.assertEqual(runner._job_runtime_backend("scrape_and_sync"), "ecs_fargate")
 
+    def test_job_runner_uses_persisted_dashboard_supplier_config_for_all_backends(self) -> None:
+        supplier_config_path = Path(self.tempdir.name) / "suppliers.json"
+        save_supplier_configs(
+            [
+                SupplierConfig(
+                    supplier_slug="terravigna",
+                    enabled=True,
+                    scraper_adapter="terravigna",
+                    base_url="https://www.terravigna.ch",
+                    ybm_token_env_var="YBM_TOKEN_TERRAVIGNA",
+                    output_dir="output/terravigna",
+                )
+            ],
+            config_path=supplier_config_path,
+        )
+        runner = JobRunner(
+            self.conn,
+            env_file=None,
+            supplier_config_path=supplier_config_path,
+        )
+
+        payload = runner._supplier_config_payload("terravigna")
+
+        self.assertIn('"supplier_slug": "terravigna"', payload)
+
     def test_scheduler_records_blocked_supplier_instead_of_silently_ignoring_it(self) -> None:
         supplier = SupplierConfig(
             supplier_slug="walker",
@@ -303,11 +329,14 @@ class WebAppJobTests(unittest.TestCase):
         with patch("webapp.jobs.launch_ecs_task", side_effect=RuntimeError("boom")), patch(
             "webapp.jobs.get_supplier_config"
         ) as get_supplier_config_mock, patch("webapp.jobs.supplier_paths") as supplier_paths_mock:
-            get_supplier_config_mock.return_value = type(
-                "Supplier",
-                (),
-                {"output_path": lambda self, root: root / "output" / "swissbox"},
-            )()
+            get_supplier_config_mock.return_value = SupplierConfig(
+                supplier_slug="swissbox",
+                enabled=True,
+                scraper_adapter="swissbox",
+                base_url="https://example.com",
+                ybm_token_env_var="YBM_TOKEN_SWISSBOX",
+                output_dir="output/swissbox",
+            )
             supplier_paths_mock.return_value = {
                 "run_summary": Path("/tmp/run-summary.json"),
                 "sync_report": Path("/tmp/sync-report.json"),
