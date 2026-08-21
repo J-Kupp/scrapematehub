@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block header %}<div class="page-header"><div><h1>Archived Suppliers</h1><p>Archived suppliers are excluded from active dashboards, schedules, and manual runs.</p></div></div>{% endblock %}
+{% block content %}
+{% for supplier in suppliers %}
+<section class="card" style="margin-bottom:14px;"><div class="section-title"><div><h2><a href="/suppliers/{{ supplier.supplier_slug }}">{{ supplier.supplier_slug }}</a></h2><p>{{ supplier.adapter }} · {{ supplier.base_url }}</p></div><form class="inline" method="post" action="/suppliers/{{ supplier.supplier_slug }}/restore"><button class="secondary" type="submit">Restore</button></form></div></section>
+{% else %}<section class="card"><p class="soft">No archived suppliers.</p></section>{% endfor %}
+{% endblock %}

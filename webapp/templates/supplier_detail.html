@@ -7,12 +7,18 @@
   </div>
   <div class="actions">
     <a class="button-link secondary" href="/suppliers/{{ supplier.supplier_slug }}/edit">Edit Supplier</a>
+    {% if supplier.archived %}
+    <form class="inline" method="post" action="/suppliers/{{ supplier.supplier_slug }}/restore"><button class="secondary" type="submit">Restore Supplier</button></form>
+    {% else %}
+    <form class="inline" method="post" action="/suppliers/{{ supplier.supplier_slug }}/archive"><button class="danger" type="submit">Archive Supplier</button></form>
+    {% endif %}
     <a class="button-link ghost" href="/connections">Onboarding</a>
   </div>
 </div>
 {% endblock %}
 {% block content %}
 {% if notice %}<div class="notice">{{ notice }}</div>{% endif %}
+{% if supplier.archived %}<div class="error">This supplier is archived. Scheduling and manual runs are blocked until it is restored.</div>{% endif %}
 
 <div class="summary-grid">
   <div class="stat">
@@ -42,7 +48,7 @@
     <span class="pill {{ 'ok' if summary.secret_present else 'bad' }}">{{ 'Token ready' if summary.secret_present else 'Token missing' }}</span>
   </div>
   <div class="actions">
-    <button onclick="queueJob('{{ supplier.supplier_slug }}','run-sync')">Scrape + Sync</button>
+    {% if not supplier.archived %}<button onclick="queueJob('{{ supplier.supplier_slug }}','run-sync')">Scrape + Sync</button>{% endif %}
   </div>
 </section>
 

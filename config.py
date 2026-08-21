@@ -140,6 +140,8 @@ def save_supplier_configs(
                 "schedule": supplier.schedule,
                 "ybm_api_base": supplier.ybm_api_base,
                 "scrape_settings": supplier.scrape_settings,
+                "archived": supplier.archived,
+                "alert_settings": supplier.alert_settings,
             }
             for supplier in suppliers
         ]

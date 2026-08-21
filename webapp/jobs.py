@@ -19,6 +19,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from config import PROJECT_ROOT, get_log_root, get_supplier_config, load_supplier_configs
 from orchestrator import supplier_paths, write_json
 from webapp.config import EcsBackendConfig
+from webapp.alerts import automation_alert_reason, send_automation_alert
+from webapp.config import AlertEmailConfig
 from webapp.ecs_jobs import (
     describe_ecs_task,
     EcsJobError,
@@ -202,6 +204,16 @@ def tail_file(path: Path, max_bytes: int = 20000) -> str:
         return handle.read().decode("utf-8", errors="replace")
 
 
+def read_json_file(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {}
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
 class JobRunner:
     def __init__(
         self,
@@ -210,12 +222,14 @@ class JobRunner:
         supplier_config_path: Path | None = None,
         job_backend: str = "local_subprocess",
         ecs_backend: EcsBackendConfig | None = None,
+        alert_email: AlertEmailConfig | None = None,
     ) -> None:
         self.conn = conn
         self.env_file = env_file
         self.supplier_config_path = supplier_config_path
         self.job_backend = job_backend
         self.ecs_backend = ecs_backend or EcsBackendConfig()
+        self.alert_email = alert_email or AlertEmailConfig()
         self._stop_event = threading.Event()
         self._state_lock = threading.Lock()
         self._active_local_processes: dict[int, subprocess.Popen[str]] = {}
@@ -302,6 +316,13 @@ class JobRunner:
         self.scheduler = scheduler
         scheduler.start()
         for supplier in load_supplier_configs(self.supplier_config_path):
+            if supplier.archived:
+                self._record_scheduler_state(
+                    supplier.supplier_slug,
+                    status="archived",
+                    error="Supplier is archived.",
+                )
+                continue
             if not supplier.enabled:
                 self._record_scheduler_state(
                     supplier.supplier_slug,
@@ -475,6 +496,7 @@ class JobRunner:
                     ),
                 )
                 self.conn.commit()
+                self._notify_scheduled_job(job, JOB_STATUS_FAILED, str(exc), {})
                 continue
             if job.get("backend") == "ecs_fargate" and job.get("remote_job_id"):
                 try:
@@ -691,6 +713,7 @@ class JobRunner:
             ),
         )
         self.conn.commit()
+        self._notify_scheduled_job(job, status, error_message, read_json_file(paths["run_summary"]))
 
     def _execute_ecs_job(self, job: dict[str, Any]) -> None:
         supplier_slug = job["supplier_slug"]
@@ -793,6 +816,12 @@ class JobRunner:
                         ),
                     )
                     self.conn.commit()
+                    self._notify_scheduled_job(
+                        job,
+                        status,
+                        job.get("error_message") or result.stopped_reason or result.stop_code or "",
+                        read_json_file(paths["run_summary"]),
+                    )
                     return
                 time.sleep(5.0)
         except Exception as exc:
@@ -812,3 +841,35 @@ class JobRunner:
                 ),
             )
             self.conn.commit()
+            self._notify_scheduled_job(job, JOB_STATUS_FAILED, str(exc), {})
+
+    def _notify_scheduled_job(
+        self,
+        job: dict[str, Any],
+        status: str,
+        error_message: str,
+        run_summary: dict[str, Any],
+    ) -> None:
+        try:
+            supplier = get_supplier_config(job["supplier_slug"], self.supplier_config_path)
+            settings = getattr(supplier, "alert_settings", {}) or {}
+            reason = automation_alert_reason(
+                job,
+                status=status,
+                error_message=error_message,
+                run_summary=run_summary,
+                alert_settings=settings,
+            )
+            recipient = str(settings.get("email_to", "")).strip()
+            if not reason or not recipient:
+                return
+            send_automation_alert(
+                self.alert_email,
+                recipient=recipient,
+                supplier_slug=supplier.supplier_slug,
+                job_id=int(job["id"]),
+                reason=reason,
+            )
+            logger.info("Sent scheduled-run alert for %s job %s", supplier.supplier_slug, job["id"])
+        except Exception as exc:  # pragma: no cover - delivery configuration is environment-specific
+            logger.error("Could not send scheduled-run alert for job %s: %s", job["id"], exc)

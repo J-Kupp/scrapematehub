@@ -10,6 +10,14 @@
   "shared_secrets_region": "eu-central-1",
   "scheduler_enabled": true,
   "scheduler_mode": "internal",
+  "alert_email": {
+    "smtp_host": "",
+    "smtp_port": 587,
+    "smtp_username_env_var": "ALERT_SMTP_USERNAME",
+    "smtp_password_env_var": "ALERT_SMTP_PASSWORD",
+    "from_email_env_var": "ALERT_EMAIL_FROM",
+    "use_starttls": true
+  },
   "job_backend": "ecs_fargate",
   "session_same_site": "lax",
   "session_https_only": false,
