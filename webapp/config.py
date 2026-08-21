@@ -36,6 +36,16 @@ class EcsBackendConfig:
 
 
 @dataclass
+class AlertEmailConfig:
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username_env_var: str = "ALERT_SMTP_USERNAME"
+    smtp_password_env_var: str = "ALERT_SMTP_PASSWORD"
+    from_email_env_var: str = "ALERT_EMAIL_FROM"
+    use_starttls: bool = True
+
+
+@dataclass
 class WebAppConfig:
     host: str = "127.0.0.1"
     port: int = 8765
@@ -59,6 +69,7 @@ class WebAppConfig:
     )
     bootstrap_users: list[BootstrapUser] = field(default_factory=list)
     ecs_backend: EcsBackendConfig = field(default_factory=EcsBackendConfig)
+    alert_email: AlertEmailConfig = field(default_factory=AlertEmailConfig)
 
     def resolved_db_path(self) -> Path:
         path = Path(self.db_path)
@@ -173,6 +184,7 @@ def load_webapp_config(config_path: Path | None = None) -> WebAppConfig:
             for user_payload in payload.get("bootstrap_users", [])
         ]
         ecs_backend_payload = payload.get("ecs_backend", {})
+        alert_email_payload = payload.get("alert_email", {})
         config = WebAppConfig(
             host=payload.get("host", config.host),
             port=int(payload.get("port", config.port)),
@@ -232,6 +244,18 @@ def load_webapp_config(config_path: Path | None = None) -> WebAppConfig:
                 execution_role_mode=ecs_backend_payload.get("execution_role_mode", "task"),
                 artifact_bucket=ecs_backend_payload.get("artifact_bucket", ""),
                 artifact_prefix=ecs_backend_payload.get("artifact_prefix", "suppliers"),
+            ),
+            alert_email=AlertEmailConfig(
+                smtp_host=alert_email_payload.get("smtp_host", ""),
+                smtp_port=int(alert_email_payload.get("smtp_port", 587)),
+                smtp_username_env_var=alert_email_payload.get(
+                    "smtp_username_env_var", "ALERT_SMTP_USERNAME"
+                ),
+                smtp_password_env_var=alert_email_payload.get(
+                    "smtp_password_env_var", "ALERT_SMTP_PASSWORD"
+                ),
+                from_email_env_var=alert_email_payload.get("from_email_env_var", "ALERT_EMAIL_FROM"),
+                use_starttls=bool(alert_email_payload.get("use_starttls", True)),
             ),
         )
     # Production config is the source of truth; the env file may still be used locally.

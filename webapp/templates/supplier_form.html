@@ -13,6 +13,7 @@
 {% set schedule = supplier.schedule if supplier else {} %}
 {% set scrape = supplier.scrape_settings if supplier else {} %}
 {% set catalog_update_policy = supplier.catalog_update_policy if supplier else 'delete_missing' %}
+{% set alerts = supplier.alert_settings if supplier else {} %}
 
 <form method="post" action="{{ '/suppliers/new' if form_mode == 'create' else '/suppliers/' ~ supplier.supplier_slug ~ '/edit' }}">
   <div class="grid cols-2">
@@ -41,6 +42,25 @@
       <label>Base URL
         <input type="url" name="base_url" required value="{{ supplier.base_url if supplier else '' }}" />
       </label>
+    </section>
+
+    <section class="card">
+      <div class="section-title">
+        <div>
+          <h2>Automation Alerts</h2>
+          <p>Email warnings only for scheduled runs that fail or cross the configured error threshold.</p>
+        </div>
+      </div>
+      <label>Alert recipient
+        <input type="email" name="alert_email_to" value="{{ alerts.get('email_to', '') }}" placeholder="ops@example.com" />
+      </label>
+      <label>Minimum product errors
+        <input type="number" min="1" name="alert_minimum_failures" value="{{ alerts.get('minimum_failures', 10) }}" />
+      </label>
+      <label>Minimum error rate (%)
+        <input type="number" min="0" max="100" step="0.1" name="alert_failure_rate_percent" value="{{ alerts.get('failure_rate_percent', 5) }}" />
+      </label>
+      <p class="soft tiny">A failed scheduled job alerts immediately. A completed run alerts only when both thresholds are reached.</p>
     </section>
 
     <section class="card">
@@ -149,6 +169,7 @@
         <button type="submit">{{ 'Create Supplier' if form_mode == 'create' else 'Save Changes' }}</button>
         {% if supplier %}
         <a class="button-link ghost" href="/suppliers/{{ supplier.supplier_slug }}">Back to Supplier</a>
+        {% if not supplier.archived %}<button class="danger" type="submit" formaction="/suppliers/{{ supplier.supplier_slug }}/archive" formmethod="post">Archive Supplier</button>{% endif %}
         {% else %}
         <a class="button-link ghost" href="/">Back to Dashboard</a>
         {% endif %}

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from dataclasses import replace
 from pathlib import Path
 import re
 import sqlite3
@@ -201,6 +202,7 @@ def create_app(config_path: Path | None = None) -> FastAPI:
         supplier_config_path,
         job_backend=app_config.job_backend,
         ecs_backend=app_config.ecs_backend,
+        alert_email=app_config.alert_email,
     )
 
     @asynccontextmanager
@@ -358,6 +360,22 @@ def create_app(config_path: Path | None = None) -> FastAPI:
             ),
         )
 
+    @app.get("/suppliers/archived", response_class=HTMLResponse)
+    def archived_suppliers_page(
+        request: Request,
+        _: dict[str, str] = Depends(require_user),
+    ) -> HTMLResponse:
+        suppliers = [
+            summary
+            for summary in supplier_health_summary(conn, app_config, include_archived=True)
+            if summary["archived"]
+        ]
+        return templates.TemplateResponse(
+            request,
+            "archived_suppliers.html",
+            template_context(request, suppliers=suppliers),
+        )
+
     @app.get("/suppliers/{supplier_slug}", response_class=HTMLResponse)
     def supplier_detail(
         supplier_slug: str,
@@ -365,7 +383,7 @@ def create_app(config_path: Path | None = None) -> FastAPI:
         _: dict[str, str] = Depends(require_user),
     ) -> HTMLResponse:
         supplier = supplier_by_slug(supplier_slug, app_config)
-        summaries = supplier_health_summary(conn, app_config)
+        summaries = supplier_health_summary(conn, app_config, include_archived=True)
         selected = next(
             (summary for summary in summaries if summary["supplier_slug"] == supplier_slug),
             None,
@@ -426,6 +444,7 @@ def create_app(config_path: Path | None = None) -> FastAPI:
                         build_supplier_from_form(
                             **updated_supplier,
                             existing_scrape_settings=config.scrape_settings,
+                            existing_alert_settings=config.alert_settings,
                         )
                     )
                     replaced = True
@@ -466,6 +485,9 @@ def create_app(config_path: Path | None = None) -> FastAPI:
         schedule_frequency: str = Form("weekly"),
         schedule_weekday: str = Form("monday"),
         schedule_time: str = Form("03:30"),
+        alert_email_to: str = Form(""),
+        alert_minimum_failures: str = Form("10"),
+        alert_failure_rate_percent: str = Form("5"),
         concurrency: str = Form(""),
         min_delay_seconds: str = Form(""),
         max_delay_seconds: str = Form(""),
@@ -486,6 +508,9 @@ def create_app(config_path: Path | None = None) -> FastAPI:
                     "schedule_frequency": schedule_frequency,
                     "schedule_weekday": schedule_weekday,
                     "schedule_time": schedule_time,
+                    "alert_email_to": alert_email_to,
+                    "alert_minimum_failures": alert_minimum_failures,
+                    "alert_failure_rate_percent": alert_failure_rate_percent,
                     "concurrency": concurrency,
                     "min_delay_seconds": min_delay_seconds,
                     "max_delay_seconds": max_delay_seconds,
@@ -519,6 +544,9 @@ def create_app(config_path: Path | None = None) -> FastAPI:
         schedule_frequency: str = Form("weekly"),
         schedule_weekday: str = Form("monday"),
         schedule_time: str = Form("03:30"),
+        alert_email_to: str = Form(""),
+        alert_minimum_failures: str = Form("10"),
+        alert_failure_rate_percent: str = Form("5"),
         concurrency: str = Form(""),
         min_delay_seconds: str = Form(""),
         max_delay_seconds: str = Form(""),
@@ -539,6 +567,9 @@ def create_app(config_path: Path | None = None) -> FastAPI:
                     "schedule_frequency": schedule_frequency,
                     "schedule_weekday": schedule_weekday,
                     "schedule_time": schedule_time,
+                    "alert_email_to": alert_email_to,
+                    "alert_minimum_failures": alert_minimum_failures,
+                    "alert_failure_rate_percent": alert_failure_rate_percent,
                     "concurrency": concurrency,
                     "min_delay_seconds": min_delay_seconds,
                     "max_delay_seconds": max_delay_seconds,
@@ -558,6 +589,37 @@ def create_app(config_path: Path | None = None) -> FastAPI:
             f"/suppliers/{supplier_slug}?notice={notice.replace(' ', '+')}",
             status_code=302,
         )
+
+    @app.post("/suppliers/{supplier_slug}/archive")
+    def archive_supplier(
+        supplier_slug: str,
+        _: dict[str, str] = Depends(require_user),
+    ) -> RedirectResponse:
+        configs = load_supplier_configs(supplier_config_path)
+        updated = [
+            replace(config, archived=True, enabled=False, schedule={"frequency": "disabled"})
+            if config.supplier_slug == supplier_slug
+            else config
+            for config in configs
+        ]
+        if not any(config.supplier_slug == supplier_slug for config in configs):
+            raise HTTPException(status_code=404, detail="Supplier not found.")
+        save_supplier_configs(updated, config_path=supplier_config_path)
+        job_runner.reload_scheduler(enabled=app_config.scheduler_enabled, mode=app_config.scheduler_mode)
+        return RedirectResponse("/suppliers/archived?notice=Supplier+archived.", status_code=302)
+
+    @app.post("/suppliers/{supplier_slug}/restore")
+    def restore_supplier(
+        supplier_slug: str,
+        _: dict[str, str] = Depends(require_user),
+    ) -> RedirectResponse:
+        configs = load_supplier_configs(supplier_config_path)
+        updated = [replace(config, archived=False) if config.supplier_slug == supplier_slug else config for config in configs]
+        if not any(config.supplier_slug == supplier_slug for config in configs):
+            raise HTTPException(status_code=404, detail="Supplier not found.")
+        save_supplier_configs(updated, config_path=supplier_config_path)
+        job_runner.reload_scheduler(enabled=app_config.scheduler_enabled, mode=app_config.scheduler_mode)
+        return RedirectResponse(f"/suppliers/{supplier_slug}?notice=Supplier+restored.", status_code=302)
 
     @app.get("/jobs/{job_id}", response_class=HTMLResponse)
     def job_detail(
@@ -661,9 +723,11 @@ def create_app(config_path: Path | None = None) -> FastAPI:
     ) -> JSONResponse:
         user = require_user(request)
         try:
-            supplier_by_slug(supplier_slug, app_config)
+            supplier = supplier_by_slug(supplier_slug, app_config)
         except KeyError as exc:
             raise HTTPException(status_code=404, detail="Supplier not found.") from exc
+        if supplier["archived"]:
+            raise HTTPException(status_code=409, detail="Supplier is archived. Restore it before running jobs.")
         try:
             command = build_job_command(
                 supplier_slug,

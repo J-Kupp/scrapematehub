@@ -183,9 +183,13 @@ def ecs_runtime_status(app_config: WebAppConfig) -> dict[str, Any]:
 def supplier_health_summary(
     conn: sqlite3.Connection,
     app_config: WebAppConfig,
+    *,
+    include_archived: bool = False,
 ) -> list[dict[str, Any]]:
     summaries: list[dict[str, Any]] = []
     for supplier in load_supplier_configs(app_config.resolved_supplier_config_path()):
+        if supplier.archived and not include_archived:
+            continue
         paths = supplier_paths(
             supplier.supplier_slug,
             supplier.output_path(PROJECT_ROOT),
@@ -214,6 +218,8 @@ def supplier_health_summary(
                 "adapter": supplier.scraper_adapter,
                 "adapter_available": supplier.scraper_adapter in ADAPTER_REGISTRY,
                 "enabled": supplier.enabled,
+                "archived": supplier.archived,
+                "alert_settings": supplier.alert_settings,
                 "base_url": supplier.base_url,
                 "schedule": supplier.schedule,
                 "catalog_update_policy": supplier.catalog_update_policy,
@@ -310,6 +316,8 @@ def supplier_by_slug(slug: str, app_config: WebAppConfig | None = None) -> dict[
         "adapter": supplier.scraper_adapter,
         "adapter_available": supplier.scraper_adapter in ADAPTER_REGISTRY,
         "enabled": supplier.enabled,
+        "archived": supplier.archived,
+        "alert_settings": supplier.alert_settings,
         "base_url": supplier.base_url,
         "token_env_var": supplier.ybm_token_env_var,
         "schedule": supplier.schedule,
@@ -400,6 +408,10 @@ def build_supplier_from_form(
     min_delay_seconds: str,
     max_delay_seconds: str,
     existing_scrape_settings: dict[str, Any] | None = None,
+    existing_alert_settings: dict[str, Any] | None = None,
+    alert_email_to: str = "",
+    alert_minimum_failures: str = "10",
+    alert_failure_rate_percent: str = "5",
 ):
     scrape_settings: dict[str, Any] = dict(existing_scrape_settings or {})
     if concurrency.strip():
@@ -408,6 +420,11 @@ def build_supplier_from_form(
         scrape_settings["min_delay_seconds"] = float(min_delay_seconds.strip())
     if max_delay_seconds.strip():
         scrape_settings["max_delay_seconds"] = float(max_delay_seconds.strip())
+    alert_settings = {
+        "email_to": alert_email_to.strip(),
+        "minimum_failures": int(alert_minimum_failures.strip() or "10"),
+        "failure_rate_percent": float(alert_failure_rate_percent.strip() or "5"),
+    }
     from models import SupplierConfig
 
     return SupplierConfig(
@@ -426,6 +443,7 @@ def build_supplier_from_form(
         ),
         ybm_api_base=ybm_api_base.strip() or "https://connect.yourbarmate.com/api",
         scrape_settings=scrape_settings,
+        alert_settings=alert_settings,
     )
 
 

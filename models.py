@@ -126,6 +126,8 @@ class SupplierConfig:
     schedule: dict[str, str] = field(default_factory=dict)
     ybm_api_base: str = "https://connect.yourbarmate.com/api"
     scrape_settings: dict[str, Any] = field(default_factory=dict)
+    archived: bool = False
+    alert_settings: dict[str, Any] = field(default_factory=dict)
 
     def output_path(self, project_root: Path) -> Path:
         path = Path(self.output_dir)
