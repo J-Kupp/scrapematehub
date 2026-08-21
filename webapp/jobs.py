@@ -512,7 +512,7 @@ class JobRunner:
                     (result.last_status, result.log_group, result.log_stream, job["id"]),
                 )
                 if result.last_status == "STOPPED":
-                    config = get_supplier_config(job["supplier_slug"])
+                    config = self._supplier_config_for_job(job["supplier_slug"])
                     paths = supplier_paths(job["supplier_slug"], config.output_path(PROJECT_ROOT))
                     status = JOB_STATUS_SUCCEEDED if result.exit_code == 0 else JOB_STATUS_FAILED
                     self.conn.execute(
@@ -623,6 +623,14 @@ class JobRunner:
             return "local_subprocess"
         return self.job_backend
 
+    def _supplier_config_for_job(self, supplier_slug: str):
+        """Read the durable dashboard configuration for every execution backend."""
+        return get_supplier_config(supplier_slug, self.supplier_config_path)
+
+    def _supplier_config_payload(self, supplier_slug: str) -> str:
+        supplier = self._supplier_config_for_job(supplier_slug)
+        return json.dumps({"suppliers": [asdict(supplier)]}, ensure_ascii=False)
+
     def _execute_local_job(self, job: dict[str, Any]) -> None:
         supplier_slug = job["supplier_slug"]
         log_dir = get_log_root() / "webapp" / "jobs"
@@ -636,6 +644,7 @@ class JobRunner:
 
         command = json.loads(job["command"])
         env = os.environ.copy()
+        env["SUPPLIER_CONFIG_JSON"] = self._supplier_config_payload(supplier_slug)
         with log_path.open("w", encoding="utf-8") as handle:
             handle.write(f"$ {' '.join(command)}\n")
             handle.flush()
@@ -684,7 +693,7 @@ class JobRunner:
                 )
                 self.conn.commit()
 
-        config = get_supplier_config(supplier_slug)
+        config = self._supplier_config_for_job(supplier_slug)
         paths = supplier_paths(supplier_slug, config.output_path(PROJECT_ROOT))
         stopped = self._job_stop_requested(job["id"])
         status = JOB_STATUS_STOPPED if stopped else (JOB_STATUS_SUCCEEDED if return_code == 0 else JOB_STATUS_FAILED)
@@ -722,17 +731,9 @@ class JobRunner:
             job["job_type"],
             env_file=self.env_file,
         )
-        config = get_supplier_config(supplier_slug)
+        config = self._supplier_config_for_job(supplier_slug)
         paths = supplier_paths(supplier_slug, config.output_path(PROJECT_ROOT))
-        supplier_configs_payload = {}
-        if self.supplier_config_path is not None:
-            try:
-                supplier = get_supplier_config(supplier_slug, self.supplier_config_path)
-                supplier_configs_payload = {
-                    "suppliers": [asdict(supplier)],
-                }
-            except Exception:
-                supplier_configs_payload = {}
+        supplier_config_payload = self._supplier_config_payload(supplier_slug)
         try:
             launch = launch_ecs_task(
                 self.ecs_backend,
@@ -741,9 +742,7 @@ class JobRunner:
                     "SUPPLIER_SLUG": supplier_slug,
                     "JOB_TYPE": job["job_type"],
                     "ENV_FILE_REF": str(self.env_file) if self.env_file else "",
-                    "SUPPLIER_CONFIG_JSON": json.dumps(supplier_configs_payload, ensure_ascii=False)
-                    if supplier_configs_payload
-                    else "",
+                    "SUPPLIER_CONFIG_JSON": supplier_config_payload,
                 },
                 supplier_slug=supplier_slug,
                 job_type=job["job_type"],
