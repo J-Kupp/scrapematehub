@@ -11,7 +11,7 @@
   "scheduler_enabled": true,
   "scheduler_mode": "internal",
   "alert_email": {
-    "smtp_host": "",
+    "smtp_host": "email-smtp.eu-central-1.amazonaws.com",
     "smtp_port": 587,
     "smtp_username_env_var": "ALERT_SMTP_USERNAME",
     "smtp_password_env_var": "ALERT_SMTP_PASSWORD",

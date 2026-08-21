@@ -199,3 +199,16 @@ class DeploymentConfigTests(unittest.TestCase):
         self.assertIn('--exclude "suppliers.json"', workflow)
         self.assertIn("suppliers.defaults.json", workflow)
         self.assertIn("/var/lib/yourbarmate-suppliers/control_panel/suppliers.json", production_config)
+
+    def test_production_alert_email_uses_the_frankfurt_ses_endpoint(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        production_config = json.loads(
+            (root / "deploy" / "aws" / "control_panel.production.json").read_text(
+                encoding="utf-8"
+            )
+        )
+
+        self.assertEqual(
+            production_config["alert_email"]["smtp_host"],
+            "email-smtp.eu-central-1.amazonaws.com",
+        )
