@@ -80,6 +80,26 @@
         "max_pages": 0,
         "max_products": 0
       }
+    },
+    {
+      "supplier_slug": "terravigna",
+      "enabled": false,
+      "scraper_adapter": "terravigna",
+      "base_url": "https://www.terravigna.ch",
+      "ybm_api_base": "https://connect.yourbarmate.com/api",
+      "ybm_token_env_var": "YBM_TOKEN_TERRAVIGNA",
+      "output_dir": "output/terravigna",
+      "catalog_update_policy": "keep_existing",
+      "schedule": {
+        "frequency": "disabled"
+      },
+      "scrape_settings": {
+        "concurrency": 4,
+        "min_delay_seconds": 0.1,
+        "max_delay_seconds": 0.3,
+        "max_pages": 0,
+        "max_products": 0
+      }
     }
   ]
 }

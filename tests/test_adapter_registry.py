@@ -17,6 +17,11 @@ class AdapterRegistryTests(unittest.TestCase):
         adapter_cls = get_adapter("gourmador")
         self.assertEqual(adapter_cls.__name__, "GourmadorAdapter")
 
+    def test_terravigna_adapter_is_registered_and_loadable(self) -> None:
+        self.assertIn("terravigna", ADAPTER_REGISTRY)
+        adapter_cls = get_adapter("terravigna")
+        self.assertEqual(adapter_cls.__name__, "TerraVignaAdapter")
+
     def test_adapter_path_info_points_to_package_structure(self) -> None:
         info = adapter_path_info("swissbox")
         self.assertTrue(Path(info["scraper_path"]).exists())
