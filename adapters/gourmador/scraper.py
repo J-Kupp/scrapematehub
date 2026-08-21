@@ -211,8 +211,13 @@ class GourmadorAdapter(SupplierAdapter):
         force_refresh: bool,
     ) -> set[str]:
         semaphore = asyncio.Semaphore(self.category_concurrency)
+        discovered_urls: set[str] = set()
+        progress_lock = asyncio.Lock()
+        pages_seen = 0
+        fetcher.logger.info("PROGRESS phase=discovering found=0 pages=0 expected=0")
 
         async def crawl_category(category: dict[str, str]) -> tuple[set[str], dict[str, str]]:
+            nonlocal pages_seen
             async with semaphore:
                 to_visit = [category["category_url"]]
                 seen_pages: set[str] = set()
@@ -223,7 +228,16 @@ class GourmadorAdapter(SupplierAdapter):
                         continue
                     seen_pages.add(page_url)
                     html = await fetcher.fetch_text(page_url, force_refresh=force_refresh)
-                    product_urls.update(extract_product_links(html, self.base_url))
+                    page_products = extract_product_links(html, self.base_url)
+                    product_urls.update(page_products)
+                    async with progress_lock:
+                        discovered_urls.update(page_products)
+                        pages_seen += 1
+                        fetcher.logger.info(
+                            "PROGRESS phase=discovering found=%s pages=%s expected=0",
+                            len(discovered_urls),
+                            pages_seen,
+                        )
                     for next_url in extract_pagination_links(html, self.base_url):
                         if next_url not in seen_pages:
                             to_visit.append(next_url)
@@ -239,7 +253,6 @@ class GourmadorAdapter(SupplierAdapter):
 
         tasks = [crawl_category(category) for category in categories]
         results = await asyncio.gather(*tasks, return_exceptions=True)
-        discovered_urls: set[str] = set()
         for category, result in zip(categories, results, strict=True):
             if isinstance(result, Exception):
                 failures.append(
@@ -261,8 +274,7 @@ class GourmadorAdapter(SupplierAdapter):
                     }
                 )
                 continue
-            product_urls, diagnostic = result
-            discovered_urls.update(product_urls)
+            _product_urls, diagnostic = result
             listing_diagnostics.append(diagnostic)
         return discovered_urls
 
@@ -275,15 +287,35 @@ class GourmadorAdapter(SupplierAdapter):
         force_refresh: bool,
     ) -> tuple[list[NormalizedProduct], int, int]:
         semaphore = asyncio.Semaphore(self.detail_concurrency)
+        total = len(product_urls)
+        processed = 0
+        scraped = 0
+        progress_lock = asyncio.Lock()
+        fetcher.logger.info("PROGRESS phase=processing found=%s processed=0 scraped=0 total=%s", total, total)
 
         async def fetch_product(url: str) -> tuple[NormalizedProduct | None, dict[str, Any] | None]:
+            nonlocal processed, scraped
+            product: NormalizedProduct | None = None
             async with semaphore:
-                html = await fetcher.fetch_text(url, force_refresh=force_refresh)
-                payload = extract_product_payload(html)
-                if payload:
-                    self._write_payload_snapshot(url, payload)
-                product = parse_product_record(html, url, product_payload=payload)
-                return product, payload
+                try:
+                    html = await fetcher.fetch_text(url, force_refresh=force_refresh)
+                    payload = extract_product_payload(html)
+                    if payload:
+                        self._write_payload_snapshot(url, payload)
+                    product = parse_product_record(html, url, product_payload=payload)
+                    return product, payload
+                finally:
+                    async with progress_lock:
+                        processed += 1
+                        if product is not None:
+                            scraped += 1
+                        fetcher.logger.info(
+                            "PROGRESS phase=processing found=%s processed=%s scraped=%s total=%s",
+                            total,
+                            processed,
+                            scraped,
+                            total,
+                        )
 
         tasks = [fetch_product(url) for url in product_urls]
         results = await asyncio.gather(*tasks, return_exceptions=True)

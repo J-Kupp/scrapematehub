@@ -17,6 +17,7 @@ from adapters.terravigna.transform import (
     extract_listing_product_total,
     extract_next_listing_url,
     extract_product_links,
+    extract_sitemap_product_links,
     parse_product_record,
 )
 from config import get_cache_root, get_log_root
@@ -150,6 +151,31 @@ class TerraVignaAdapter(SupplierAdapter):
                     logger,
                     force_refresh=force_refresh,
                 )
+                if not product_urls:
+                    sitemap_url = f"{self.base_url}/sitemap.xml"
+                    sitemap_xml = await fetcher.fetch_text(sitemap_url, force_refresh=force_refresh)
+                    product_urls = extract_sitemap_product_links(sitemap_xml, self.base_url)
+                    logger.info(
+                        "TerraVigna listing was empty; sitemap fallback found %s product URLs.",
+                        len(product_urls),
+                    )
+                    logger.info(
+                        "PROGRESS phase=discovering found=%s pages=1 expected=%s",
+                        len(product_urls),
+                        len(product_urls),
+                    )
+                    listing_diagnostics.append(
+                        {
+                            "page_url": sitemap_url,
+                            "page_index": "fallback",
+                            "product_url_count": str(len(product_urls)),
+                            "cumulative_product_url_count": str(len(product_urls)),
+                            "expected_product_count": str(len(product_urls)),
+                            "source": "sitemap_fallback",
+                        }
+                    )
+                if not product_urls:
+                    raise ScraperError("No TerraVigna product URLs were discovered from the shop or sitemap.")
                 if self.max_products:
                     product_urls = product_urls[: self.max_products]
                 products, raw_count, interpreted_count = await self._fetch_products(

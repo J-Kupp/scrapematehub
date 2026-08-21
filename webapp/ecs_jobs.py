@@ -94,7 +94,7 @@ def read_ecs_task_logs(
     task_arn: str,
     log_group: str = "",
     log_stream: str = "",
-    limit: int = 200,
+    limit: int = 10_000,
 ) -> tuple[str, str, str]:
     resolved_group = log_group
     resolved_stream = log_stream
@@ -108,7 +108,10 @@ def read_ecs_task_logs(
         response = client.get_log_events(
             logGroupName=resolved_group,
             logStreamName=resolved_stream,
-            startFromHead=False,
+            # Completed Fargate streams can return an empty tail on the first
+            # backwards query. Reading from the head is reliable and keeps the
+            # dashboard progress contract identical for running and finished jobs.
+            startFromHead=True,
             limit=limit,
         )
     except client.exceptions.ResourceNotFoundException:
