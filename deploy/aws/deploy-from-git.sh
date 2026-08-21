@@ -7,6 +7,9 @@ VENV_DIR=${VENV_DIR:-$APP_ROOT/venv}
 SERVICE_NAME=${SERVICE_NAME:-yourbarmate-suppliers}
 HEALTHCHECK_URL=${HEALTHCHECK_URL:-http://127.0.0.1:8765/healthz}
 CONTROL_PANEL_STATE_DIR=${CONTROL_PANEL_STATE_DIR:-/var/lib/yourbarmate-suppliers/control_panel}
+RUNTIME_SUPPLIER_CONFIG_PATH=${RUNTIME_SUPPLIER_CONFIG_PATH:-$CONTROL_PANEL_STATE_DIR/suppliers.json}
+SUPPLIER_DEFAULTS_PATH=${SUPPLIER_DEFAULTS_PATH:-$APP_DIR/suppliers.defaults.json}
+LEGACY_SUPPLIER_CONFIG_PATH=${LEGACY_SUPPLIER_CONFIG_PATH:-$APP_DIR/suppliers.json}
 RELEASE_METADATA_PATH=${RELEASE_METADATA_PATH:-$CONTROL_PANEL_STATE_DIR/release.json}
 DEPLOY_SOURCE_REVISION=${DEPLOY_SOURCE_REVISION:-}
 DEPLOY_SOURCE_LABEL=${DEPLOY_SOURCE_LABEL:-github-actions}
@@ -25,6 +28,16 @@ fi
 "$VENV_DIR/bin/pip" install -r requirements.txt
 
 mkdir -p "$CONTROL_PANEL_STATE_DIR"
+if [ ! -f "$SUPPLIER_DEFAULTS_PATH" ]; then
+  echo "Supplier defaults not found: $SUPPLIER_DEFAULTS_PATH" >&2
+  exit 1
+fi
+
+python3 deploy/aws/merge_supplier_configs.py \
+  --defaults "$SUPPLIER_DEFAULTS_PATH" \
+  --runtime "$RUNTIME_SUPPLIER_CONFIG_PATH" \
+  --legacy "$LEGACY_SUPPLIER_CONFIG_PATH"
+
 python3 - <<PY
 import json
 from datetime import datetime, timezone

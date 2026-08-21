@@ -2,7 +2,7 @@
   "host": "127.0.0.1",
   "port": 8765,
   "db_path": "/var/lib/yourbarmate-suppliers/control_panel/control_panel.db",
-  "supplier_config_path": "/opt/yourbarmate-suppliers/app/suppliers.json",
+  "supplier_config_path": "/var/lib/yourbarmate-suppliers/control_panel/suppliers.json",
   "session_secret_env_var": "CONTROL_PANEL_SESSION_SECRET",
   "env_file": "/etc/yourbarmate-suppliers.env",
   "shared_secrets_backend": "aws-secrets-manager",

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import tempfile
@@ -9,6 +10,15 @@ from pathlib import Path
 from config import load_supplier_configs, save_supplier_configs
 from models import SupplierConfig
 from webapp.config import BootstrapUser, WebAppConfig
+
+
+def load_runtime_config_merge_module():
+    module_path = Path(__file__).resolve().parents[1] / "deploy" / "aws" / "merge_supplier_configs.py"
+    spec = importlib.util.spec_from_file_location("merge_supplier_configs", module_path)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 class DeploymentConfigTests(unittest.TestCase):
@@ -123,3 +133,69 @@ class DeploymentConfigTests(unittest.TestCase):
         self.assertIn('"cpu": "4096"', task_def)
         self.assertIn('"memory": "8192"', task_def)
         self.assertIn('"stopTimeout": 10', task_def)
+
+    def test_runtime_supplier_config_preserves_dashboard_settings_and_adds_new_defaults(self) -> None:
+        merge_module = load_runtime_config_merge_module()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            defaults_path = root / "suppliers.defaults.json"
+            legacy_path = root / "legacy-suppliers.json"
+            runtime_path = root / "state" / "suppliers.json"
+            defaults_path.write_text(
+                json.dumps(
+                    {
+                        "suppliers": [
+                            {"supplier_slug": "swissbox", "enabled": True},
+                            {"supplier_slug": "walker", "enabled": True},
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            legacy_path.write_text(
+                json.dumps(
+                    {
+                        "suppliers": [
+                            {
+                                "supplier_slug": "swissbox",
+                                "enabled": True,
+                                "schedule": {"frequency": "disabled"},
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            preserved, added = merge_module.merge_supplier_configs(
+                defaults_path=defaults_path,
+                runtime_path=runtime_path,
+                legacy_path=legacy_path,
+            )
+            payload = json.loads(runtime_path.read_text(encoding="utf-8"))
+
+            self.assertEqual((preserved, added), (1, 1))
+            self.assertEqual(payload["suppliers"][0]["schedule"]["frequency"], "disabled")
+            self.assertEqual(payload["suppliers"][1]["supplier_slug"], "walker")
+
+            defaults_path.write_text(
+                json.dumps({"suppliers": [{"supplier_slug": "swissbox", "enabled": True}]}),
+                encoding="utf-8",
+            )
+            merge_module.merge_supplier_configs(
+                defaults_path=defaults_path,
+                runtime_path=runtime_path,
+                legacy_path=legacy_path,
+            )
+            persisted = json.loads(runtime_path.read_text(encoding="utf-8"))
+            self.assertEqual(persisted["suppliers"][0]["schedule"]["frequency"], "disabled")
+
+    def test_deploy_keeps_dashboard_supplier_config_outside_the_synced_app_directory(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        workflow = (root / ".github" / "workflows" / "deploy.yml").read_text(encoding="utf-8")
+        production_config = (root / "deploy" / "aws" / "control_panel.production.json").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('--exclude "suppliers.json"', workflow)
+        self.assertIn("suppliers.defaults.json", workflow)
+        self.assertIn("/var/lib/yourbarmate-suppliers/control_panel/suppliers.json", production_config)
