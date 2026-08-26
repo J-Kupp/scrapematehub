@@ -10,7 +10,7 @@ codex/<topic> branch -> commit -> push -> pull request -> CI -> merge main -> de
 
 1. Create a `codex/<topic>` branch from current `main`.
 2. Make code, test, fixture, and documentation changes together.
-3. Run `.venv/bin/python -m unittest discover -s tests -v` locally.
+3. Run `.venv/bin/python tools/check_repo_hygiene.py` and `.venv/bin/python -m unittest discover -s tests -v` locally.
 4. Commit, push, and open a PR.
 5. Wait for GitHub CI to pass before merging.
 6. Merging to `main` triggers three workflows:

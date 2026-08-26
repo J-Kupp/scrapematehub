@@ -83,6 +83,10 @@ The enforceable contributor rules are in [AGENTS.md](../AGENTS.md). For every su
 4. Add listing and detail fixtures plus supplier-scoped tests.
 5. Ensure the adapter runs in a clean Fargate task without local-machine dependencies.
 
+Repository hygiene is also enforced in CI. It rejects tracked local secrets and generated files,
+and requires the authoritative runbooks to remain present. Contributors must remove or update stale
+source, fixtures, tests, documentation, and defaults as part of the feature that obsoletes them.
+
 Run all tests before opening a PR:
 
 ```bash

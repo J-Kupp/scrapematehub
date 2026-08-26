@@ -73,6 +73,8 @@ The dashboard is for operations, not source-code authoring.
 ```text
 codex/<topic> branch
 -> implement adapter + fixtures + tests + default config
+-> remove/update stale supplier-specific code, docs, fixtures, and config
+-> .venv/bin/python tools/check_repo_hygiene.py
 -> local tests
 -> commit and push
 -> PR and CI

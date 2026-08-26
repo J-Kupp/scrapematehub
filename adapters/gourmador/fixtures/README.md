@@ -1,1 +1,2 @@
-Sample fixtures for the Gourmador adapter live here when we need to preserve real storefront responses for parser updates.
+Keep reduced, non-secret Gourmador storefront responses here whenever parser behavior is added or
+repaired. Fixtures must be committed with the corresponding regression test.

@@ -11,6 +11,19 @@ Before changing code or infrastructure, read the relevant authoritative runbook:
 
 Do not treat generated artifacts, local caches, or the EC2 application directory as source code.
 
+## Repository hygiene
+
+Repository hygiene is part of every change, not a separate cleanup project:
+
+1. Before work, inspect `git status --short` and preserve unrelated user changes.
+2. While changing a feature, remove or update stale code, tests, docs, comments, and configuration
+   that the feature makes obsolete.
+3. Do not add generated output, caches, browser data, local environment files, credentials, or
+   machine-specific paths to Git.
+4. Before every commit, run `.venv/bin/python tools/check_repo_hygiene.py` and the full test suite.
+5. If cleanup would delete runtime data or change a production setting, leave it untouched and
+   document/escalate it instead of treating it as source cleanup.
+
 ## Supplier adapter quality gate
 
 Every supplier adapter must meet these requirements before it can be merged:
