@@ -35,6 +35,25 @@ Every supplier adapter must meet these requirements before it can be merged:
 3. Never complete a scrape with zero discovered products silently. Record a clear failure, or use a documented public fallback such as a sitemap.
 4. Add fixture-based tests for product discovery and detail transformation. Tests must prove non-zero discovery from a representative listing fixture.
 5. Ensure the adapter works in the ephemeral Fargate worker: no reliance on local cache, local source config, or files outside the configured runtime paths.
+6. Keep vessel sizes as supplier truth in the adapter, but rely on the shared cleaner for the
+   YourBarMate precision contract. Supplier tests must cover any unusual packaging size, including
+   fractions and sub-unit values, so the shared normalization is exercised before a live sync.
+
+## Shared vessel-size contract
+
+YourBarMate vessel sizes use unit-specific precision. This is shared import policy, never
+supplier-adapter logic:
+
+| Unit | Maximum decimal places |
+| --- | --- |
+| `g`, `ml`, `quantity` | 0 |
+| `cl` | 1 |
+| `dl` | 2 |
+| `kg`, `l` | 3 |
+
+The cleaner uses half-up rounding. Positive values that would otherwise round to zero are raised
+to the smallest representable value, for example `0.0005 kg -> 0.001 kg`. The validator enforces
+the same contract before sync. Do not bypass the cleaner or recreate these rules in an adapter.
 
 ## Delivery workflow
 
