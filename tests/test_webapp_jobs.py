@@ -297,6 +297,27 @@ class WebAppJobTests(unittest.TestCase):
         self.assertEqual(row["last_status"], "scheduled")
         self.assertTrue(row["next_run_at"])
 
+    def test_scheduler_registers_monthly_supplier(self) -> None:
+        supplier = SupplierConfig(
+            supplier_slug="walker",
+            enabled=True,
+            scraper_adapter="walker",
+            base_url="https://example.com",
+            ybm_token_env_var="YBM_TOKEN_WALKER",
+            output_dir="output/walker",
+            schedule={"frequency": "monthly", "monthday": "15", "time": "04:30"},
+        )
+        runner = JobRunner(self.conn, env_file=None)
+        with patch("webapp.jobs.load_supplier_configs", return_value=[supplier]):
+            runner.start_scheduler(enabled=True, mode="internal")
+        row = self.conn.execute(
+            "SELECT next_run_at, last_status FROM scheduler_runs WHERE supplier_slug = ?",
+            ("walker",),
+        ).fetchone()
+        runner.stop()
+        self.assertEqual(row["last_status"], "scheduled")
+        self.assertTrue(row["next_run_at"])
+
     def test_ecs_job_runtime_error_marks_job_failed(self) -> None:
         job_id = queue_job(
             self.conn,

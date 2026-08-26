@@ -37,6 +37,12 @@ policy, disabled schedule, and conservative scraping settings.
 - Bound concurrency and add a small randomized request delay. Do not depend on a local browser,
   local cache, local config file, or files outside configured runtime roots.
 - Do not place shared validation/import policy inside the adapter.
+- Preserve the supplier's published vessel value and unit. The shared cleaner, not the adapter,
+  applies the YourBarMate vessel-size precision contract:
+  - `g`, `ml`, and `quantity`: whole numbers
+  - `cl`: one decimal place
+  - `dl`: two decimal places
+  - `kg` and `l`: three decimal places
 
 ## Tests Required
 
@@ -47,6 +53,8 @@ Tests must use committed fixtures and prove:
 3. A detail fixture maps important fields correctly: SKU, name, canonical URL, category, image,
    packaging, and supplier-specific critical data.
 4. Empty discovery produces an explicit failure or a tested fallback.
+5. Any supplier-specific fractional or very small vessel size is covered by a fixture test. The
+   expected API-ready rounding belongs to the shared cleaner test, not copied into the adapter.
 
 Run the full suite locally:
 

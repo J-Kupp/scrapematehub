@@ -331,7 +331,8 @@ class JobRunner:
                 )
                 continue
             schedule = supplier.schedule or {}
-            if schedule.get("frequency") != "weekly":
+            frequency = str(schedule.get("frequency", "")).strip().lower()
+            if frequency not in {"weekly", "monthly"}:
                 self._record_scheduler_state(
                     supplier.supplier_slug,
                     status="disabled",
@@ -339,14 +340,22 @@ class JobRunner:
                 )
                 continue
             try:
-                weekday = schedule.get("weekday", "monday")
                 hour, minute = (schedule.get("time", "03:30").split(":", 1) + ["0"])[:2]
+                trigger_args: dict[str, int | str] = {
+                    "hour": int(hour),
+                    "minute": int(minute),
+                }
+                if frequency == "weekly":
+                    trigger_args["day_of_week"] = str(schedule.get("weekday", "monday"))[:3]
+                else:
+                    monthday = int(str(schedule.get("monthday", "1")))
+                    if not 1 <= monthday <= 28:
+                        raise ValueError("Monthly schedule day must be between 1 and 28.")
+                    trigger_args["day"] = monthday
                 job = scheduler.add_job(
                     self._enqueue_scheduled_job,
                     "cron",
-                    day_of_week=weekday[:3],
-                    hour=int(hour),
-                    minute=int(minute),
+                    **trigger_args,
                     args=[supplier.supplier_slug],
                     id=f"supplier-{supplier.supplier_slug}",
                     replace_existing=True,

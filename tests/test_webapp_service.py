@@ -133,6 +133,7 @@ class WebAppServiceTests(unittest.TestCase):
             schedule_enabled=True,
             schedule_frequency="weekly",
             schedule_weekday="wednesday",
+            schedule_monthday="1",
             schedule_time="17:39",
             concurrency="4",
             min_delay_seconds="0.1",

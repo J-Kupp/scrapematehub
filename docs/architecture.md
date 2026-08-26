@@ -41,6 +41,22 @@ The shared stage contract is `RawSupplierRecord -> SupplierInterpretedRecord -> 
 Only `NormalizedProduct` reaches shared validation/export/sync. Do not move supplier packaging,
 category, or website behavior into shared code unless it is genuinely reusable.
 
+## Shared Vessel-Size Contract
+
+Supplier adapters extract the published size and unit; the shared cleaner owns the API-compatible
+normalization. Do not round or convert vessel precision in an individual adapter.
+
+| Unit | Maximum decimal places | Example |
+| --- | --- | --- |
+| `g`, `ml`, `quantity` | 0 | `4.5 ml -> 5 ml` |
+| `cl` | 1 | `1.26 cl -> 1.3 cl` |
+| `dl` | 2 | `1.234 dl -> 1.23 dl` |
+| `kg`, `l` | 3 | `0.0005 kg -> 0.001 kg` |
+
+Rounding is half-up. A positive value that would round to zero is raised to the smallest allowed
+size for its unit. `cleaner.py` applies this rule and `validate.py` rejects rows that do not meet
+it, so only valid vessel payloads reach `ybm.py`.
+
 ## Job Modes And Data Flow
 
 - **Scrape**: discover URLs, fetch detail pages, transform records, and write local export artifacts.
@@ -82,6 +98,8 @@ The enforceable contributor rules are in [AGENTS.md](../AGENTS.md). For every su
 3. Fail clearly if discovery is empty, or implement and document a public fallback.
 4. Add listing and detail fixtures plus supplier-scoped tests.
 5. Ensure the adapter runs in a clean Fargate task without local-machine dependencies.
+6. Include fixture coverage for non-standard vessel sizes exposed by the supplier; shared precision
+   rules belong to `cleaner.py`, not the adapter.
 
 Repository hygiene is also enforced in CI. It rejects tracked local secrets and generated files,
 and requires the authoritative runbooks to remain present. Contributors must remove or update stale
