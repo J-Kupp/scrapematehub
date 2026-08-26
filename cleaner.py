@@ -13,6 +13,15 @@ from models import CSV_COLUMNS
 ALLOWED_ORDER_BY = {"vessel", "kg"}
 ALLOWED_VESSEL_UNITS = {"l", "dl", "cl", "ml", "kg", "g", "quantity"}
 ALLOWED_PRICE_PER = {"vessel", "l", "kg", "100g"}
+VESSEL_DECIMAL_PLACES = {
+    "kg": 3,
+    "l": 3,
+    "dl": 2,
+    "cl": 1,
+    "g": 0,
+    "ml": 0,
+    "quantity": 0,
+}
 ALLOWED_STATUS = {"ACTIVE", "INACTIVE", "OUT_OF_STOCK"}
 ALLOWED_BUNDLE_TYPES = {
     "3A", "6H", "AC", "BA", "BC", "BG", "BH", "BI", "BJ", "BK", "BM", "BO", "BX", "CI", "CT", "CU",
@@ -389,6 +398,29 @@ def round_to_nearest_integer(value: str) -> str:
     return str(int(number.quantize(Decimal("1"), rounding=ROUND_HALF_UP)))
 
 
+def format_decimal(number: Decimal) -> str:
+    return format(number.normalize(), "f")
+
+
+def round_vessel_size_to_unit_precision(value: str, unit: str) -> str:
+    """Round positive vessel values to YourBarMate's supported unit precision."""
+    decimal_places = VESSEL_DECIMAL_PLACES.get(unit)
+    if decimal_places is None:
+        return value
+    try:
+        number = Decimal(normalize_decimal_string(value))
+    except (InvalidOperation, ValueError):
+        return value
+    if number <= 0:
+        return value
+    smallest_supported_value = Decimal(1).scaleb(-decimal_places)
+    rounded = number.quantize(smallest_supported_value, rounding=ROUND_HALF_UP)
+    # A positive physical vessel cannot be exported as zero after rounding.
+    if rounded == 0:
+        rounded = smallest_supported_value
+    return format_decimal(rounded)
+
+
 def is_valid_bundle_size(value: str) -> bool:
     number = parse_float_value(value)
     return number is not None and number.is_integer() and int(number) >= 2
@@ -572,11 +604,13 @@ def clean_rows(rows: list[dict[str, str]]) -> tuple[list[dict[str, str]], list[d
         row["Vessel size"] = vessel_size
         record_change(corrections, row_number=index, item_id_before=original_item_id, item_id_after=final_item_id, field="Vessel size", value_before=before_vessel_size, value_after=vessel_size, reason="normalize_vessel_size")
 
-        if row["Vessel unit"] in {"g", "ml"} and row["Vessel size"] and not is_integer_numeric_string(row["Vessel size"]):
+        if row["Vessel unit"] in VESSEL_DECIMAL_PLACES and row["Vessel size"]:
             before_size = row["Vessel size"]
-            row["Vessel size"] = round_to_nearest_integer(before_size)
-            reason = f"round_fractional_{row['Vessel unit']}_vessel"
-            record_change(corrections, row_number=index, item_id_before=original_item_id, item_id_after=final_item_id, field="Vessel size", value_before=before_size, value_after=row["Vessel size"], reason=reason)
+            rounded_size = round_vessel_size_to_unit_precision(before_size, row["Vessel unit"])
+            if rounded_size != before_size:
+                row["Vessel size"] = rounded_size
+                reason = f"round_vessel_size_{row['Vessel unit']}"
+                record_change(corrections, row_number=index, item_id_before=original_item_id, item_id_after=final_item_id, field="Vessel size", value_before=before_size, value_after=rounded_size, reason=reason)
 
         interpreted_flattened_quantity = (
             row["Vessel unit"] == "quantity"

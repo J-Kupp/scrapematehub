@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter
+from decimal import Decimal, InvalidOperation
 
 from models import CSV_COLUMNS, NormalizedProduct, ValidationResult
 
@@ -9,6 +10,31 @@ ALLOWED_ORDER_BY = {"vessel", "kg"}
 ALLOWED_VESSEL_UNITS = {"l", "dl", "cl", "ml", "kg", "g", "quantity", ""}
 ALLOWED_PRICE_PER = {"vessel", "l", "kg", "100g", ""}
 ALLOWED_STATUS = {"ACTIVE", "INACTIVE", "OUT_OF_STOCK"}
+VESSEL_DECIMAL_PLACES = {
+    "kg": 3,
+    "l": 3,
+    "dl": 2,
+    "cl": 1,
+    "g": 0,
+    "ml": 0,
+    "quantity": 0,
+}
+
+
+def vessel_size_is_api_valid(value: str, unit: str) -> bool:
+    if not value or not unit:
+        return True
+    decimal_places = VESSEL_DECIMAL_PLACES.get(unit)
+    if decimal_places is None:
+        return False
+    try:
+        number = Decimal(value)
+    except InvalidOperation:
+        return False
+    if number <= 0:
+        return False
+    smallest_supported_value = Decimal(1).scaleb(-decimal_places)
+    return number == number.quantize(smallest_supported_value)
 
 
 def validate_rows(
@@ -37,6 +63,11 @@ def validate_rows(
             errors.append(f"Invalid Order by value for {row['Item ID']}: {row['Order by']}")
         if row["Vessel unit"] not in ALLOWED_VESSEL_UNITS:
             errors.append(f"Invalid Vessel unit for {row['Item ID']}: {row['Vessel unit']}")
+        if not vessel_size_is_api_valid(row["Vessel size"], row["Vessel unit"]):
+            errors.append(
+                f"Invalid Vessel size for {row['Item ID']}: {row['Vessel size']} {row['Vessel unit']} "
+                "does not meet the supported unit precision."
+            )
         if row["Price per"] not in ALLOWED_PRICE_PER:
             errors.append(f"Invalid Price per for {row['Item ID']}: {row['Price per']}")
         if row["Status"] not in ALLOWED_STATUS:

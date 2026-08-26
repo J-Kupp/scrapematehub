@@ -59,6 +59,17 @@ class YbmApiError(RuntimeError):
         self.status_code = status_code
 
 
+def with_product_context(error: YbmApiError, payload: dict[str, Any]) -> YbmApiError:
+    vessel = payload.get("vessel", {})
+    vessel_description = ""
+    if vessel:
+        vessel_description = f", vessel={vessel.get('size')} {vessel.get('unit')}"
+    return YbmApiError(
+        f"{error}; product_id={payload.get('id')}, name={payload.get('name')}{vessel_description}",
+        status_code=error.status_code,
+    )
+
+
 COMMON_CA_BUNDLE_PATHS = (
     "/etc/ssl/cert.pem",
     "/private/etc/ssl/cert.pem",
@@ -657,7 +668,10 @@ def sync_to_ybm(
         if remote is None:
             summary.created_products += 1
             if not dry_run:
-                client.create_product(payload)
+                try:
+                    client.create_product(payload)
+                except YbmApiError as exc:
+                    raise with_product_context(exc, payload) from exc
             continue
         local_comparable = canonicalize_local_payload(payload)
         remote_comparable = canonicalize_remote_product(remote)
@@ -666,7 +680,10 @@ def sync_to_ybm(
             continue
         summary.updated_products += 1
         if not dry_run:
-            client.patch_product(product_id, payload)
+            try:
+                client.patch_product(product_id, payload)
+            except YbmApiError as exc:
+                raise with_product_context(exc, payload) from exc
 
     if not skip_inactivate:
         missing_remote_product_ids = owned_remote_product_ids - set(local_payloads)
@@ -729,14 +746,20 @@ def sync_rows_to_ybm(
         if remote is None:
             summary.created_products += 1
             if not dry_run:
-                client.create_product(payload)
+                try:
+                    client.create_product(payload)
+                except YbmApiError as exc:
+                    raise with_product_context(exc, payload) from exc
             continue
         if canonicalize_local_payload(payload) == canonicalize_remote_product(remote):
             summary.unchanged_products += 1
             continue
         summary.updated_products += 1
         if not dry_run:
-            client.patch_product(product_id, payload)
+            try:
+                client.patch_product(product_id, payload)
+            except YbmApiError as exc:
+                raise with_product_context(exc, payload) from exc
 
     if not skip_inactivate:
         missing_remote_product_ids = owned_remote_product_ids - set(local_payloads)
