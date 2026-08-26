@@ -225,6 +225,13 @@ class YbmSyncTests(unittest.TestCase):
         self.assertIn("SKU-1", self.backend.products)
         sleep.assert_called_once_with(1)
 
+    def test_sync_surfaces_the_original_error_after_all_create_retries_fail(self) -> None:
+        self.backend.transient_product_create_failures = 3
+        with patch("ybm.time.sleep") as sleep:
+            with self.assertRaisesRegex(Exception, r"POST /products failed with 500"):
+                sync_rows_to_ybm(self.make_config(), [self.make_row(price="")], dry_run=False)
+        self.assertEqual(sleep.call_args_list, [((1,), {}), ((3,), {})])
+
     def test_row_based_sync_can_limit_products_and_skip_inactivate(self) -> None:
         config = self.make_config()
         self.backend.products["REMOTE-ONLY"] = {"id": "REMOTE-ONLY", "status": "ACTIVE", "name": "Remote only"}

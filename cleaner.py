@@ -563,13 +563,14 @@ def clean_rows(rows: list[dict[str, str]]) -> tuple[list[dict[str, str]], list[d
         row["Vessel size"] = vessel_size
         record_change(corrections, row_number=index, item_id_before=original_item_id, item_id_after=final_item_id, field="Vessel size", value_before=before_vessel_size, value_after=vessel_size, reason="normalize_vessel_size")
 
-        if row["Vessel unit"] == "g" and row["Vessel size"] and not is_integer_numeric_string(row["Vessel size"]):
+        if row["Vessel unit"] in {"g", "ml"} and row["Vessel size"] and not is_integer_numeric_string(row["Vessel size"]):
             before_size = row["Vessel size"]
             before_unit = row["Vessel unit"]
             row["Vessel size"] = "1"
             row["Vessel unit"] = "quantity"
-            record_change(corrections, row_number=index, item_id_before=original_item_id, item_id_after=final_item_id, field="Vessel size", value_before=before_size, value_after="1", reason="fractional_gram_vessel_to_quantity")
-            record_change(corrections, row_number=index, item_id_before=original_item_id, item_id_after=final_item_id, field="Vessel unit", value_before=before_unit, value_after="quantity", reason="fractional_gram_vessel_to_quantity")
+            reason = f"fractional_{before_unit}_vessel_to_quantity"
+            record_change(corrections, row_number=index, item_id_before=original_item_id, item_id_after=final_item_id, field="Vessel size", value_before=before_size, value_after="1", reason=reason)
+            record_change(corrections, row_number=index, item_id_before=original_item_id, item_id_after=final_item_id, field="Vessel unit", value_before=before_unit, value_after="quantity", reason=reason)
 
         interpreted_flattened_quantity = (
             row["Vessel unit"] == "quantity"
