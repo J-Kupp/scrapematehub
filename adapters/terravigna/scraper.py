@@ -154,7 +154,7 @@ class TerraVignaAdapter(SupplierAdapter):
                 extra_http_headers=headers,
             )
             try:
-                catalog_records = await self._fetch_graphql_catalog(context, logger)
+                catalog_records = await self._fetch_graphql_catalog(context, playwright, headers, logger)
                 if catalog_records:
                     if self.max_products:
                         catalog_records = catalog_records[: self.max_products]
@@ -275,18 +275,64 @@ class TerraVignaAdapter(SupplierAdapter):
     async def _fetch_graphql_catalog(
         self,
         context: APIRequestContext,
+        playwright,
+        headers: dict[str, str],
         logger: logging.Logger,
     ) -> list[dict]:
-        """Read the public Magento catalog API, which is available to Fargate."""
+        """Read the public Magento catalog after completing the site's browser check."""
         try:
-            response = await context.post(
+            direct_response = await context.post(
                 f"{self.base_url}/graphql",
                 data={"query": GRAPHQL_QUERY},
                 timeout=REQUEST_TIMEOUT_MS,
             )
-            if not response.ok:
-                raise ScraperError(f"HTTP {response.status}")
-            payload = await response.json()
+            direct_payload = await direct_response.json()
+            direct_records = direct_payload.get("data", {}).get("products", {}).get("items", [])
+            if direct_response.ok and isinstance(direct_records, list):
+                logger.info("TerraVigna Magento GraphQL catalog returned %s products.", len(direct_records))
+                return [record for record in direct_records if isinstance(record, dict)]
+        except Exception:
+            # AWS receives an Anubis HTML challenge here, so continue with a browser.
+            pass
+
+        browser = None
+        browser_context = None
+        page = None
+        try:
+            browser = await playwright.chromium.launch(headless=True)
+            browser_context = await browser.new_context(
+                user_agent=USER_AGENT,
+                extra_http_headers=headers,
+                locale="de-CH",
+            )
+            page = await browser_context.new_page()
+            # TerraVigna protects AWS IP ranges with Anubis proof-of-work. A real
+            # browser completes it once and the resulting cookie authorizes GraphQL.
+            await page.goto(self.base_url, wait_until="domcontentloaded", timeout=REQUEST_TIMEOUT_MS)
+            await page.wait_for_function(
+                "document.cookie.includes('techaro.lol-anubis-auth-auth')",
+                timeout=30_000,
+            )
+            response = await page.evaluate(
+                """async (query) => {
+                    const result = await fetch('/graphql', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+                        body: JSON.stringify({query}),
+                    });
+                    return {
+                        status: result.status,
+                        contentType: result.headers.get('content-type') || '',
+                        body: await result.text(),
+                    };
+                }""",
+                GRAPHQL_QUERY,
+            )
+            if response["status"] != 200 or "json" not in response["contentType"].lower():
+                raise ScraperError(
+                    f"GraphQL returned HTTP {response['status']} ({response['contentType'] or 'unknown content type'})"
+                )
+            payload = json.loads(response["body"])
             if payload.get("errors"):
                 raise ScraperError(str(payload["errors"]))
             records = payload.get("data", {}).get("products", {}).get("items", [])
@@ -297,6 +343,13 @@ class TerraVignaAdapter(SupplierAdapter):
         except Exception as exc:
             logger.warning("TerraVigna Magento GraphQL catalog unavailable: %s", exc)
             return []
+        finally:
+            if page is not None:
+                await page.close()
+            if browser_context is not None:
+                await browser_context.close()
+            if browser is not None:
+                await browser.close()
 
     def _transform_graphql_catalog(
         self,
@@ -411,6 +464,7 @@ class TerraVignaAdapter(SupplierAdapter):
                         page = await browser_context.new_page()
                         try:
                             response = await page.goto(url, wait_until="domcontentloaded", timeout=REQUEST_TIMEOUT_MS)
+                            await page.wait_for_selector("h1.page-title, h1 .base", timeout=30_000)
                             rendered_html = await page.content()
                             product = parse_product_record(rendered_html, url)
                             logger.info(
