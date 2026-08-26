@@ -570,6 +570,7 @@ class YbmSyncClient:
     def create_product(self, payload: dict[str, Any]) -> dict[str, Any]:
         # Product IDs are deterministic. A GET after a server error lets us avoid
         # duplicate creation when the API processed a request but lost its response.
+        last_create_error: YbmApiError | None = None
         for delay_seconds in (0, 1, 3):
             if delay_seconds:
                 time.sleep(delay_seconds)
@@ -578,6 +579,7 @@ class YbmSyncClient:
             except YbmApiError as exc:
                 if exc.status_code is None or exc.status_code < 500:
                     raise
+                last_create_error = exc
                 try:
                     return self._request_json(
                         "GET",
@@ -586,8 +588,8 @@ class YbmSyncClient:
                 except YbmApiError as lookup_error:
                     if lookup_error.status_code != 404:
                         raise exc from lookup_error
-                    if delay_seconds == 3:
-                        raise
+        if last_create_error is not None:
+            raise last_create_error
         raise AssertionError("Unreachable product-create retry state")
 
     def patch_product(self, product_id: str, payload: dict[str, Any]) -> dict[str, Any]:

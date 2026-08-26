@@ -102,6 +102,25 @@ class CleanerTests(unittest.TestCase):
         self.assertEqual(cleaned["Bundle size"], "24")
         self.assertEqual(cleaned["Bundle type"], "PK")
 
+    def test_fractional_milliliter_vessel_is_flattened_to_quantity(self) -> None:
+        rows, corrections = clean_rows(
+            [
+                self.make_row(
+                    **{
+                        "Item name": "Pasteurpipette Saugvolumen 4,5 ml",
+                        "Description": "",
+                        "Vessel size": "4.5",
+                        "Vessel unit": "ml",
+                        "Vessel type": "",
+                    }
+                )
+            ]
+        )
+        cleaned = rows[0]
+        self.assertEqual(cleaned["Vessel size"], "1")
+        self.assertEqual(cleaned["Vessel unit"], "quantity")
+        self.assertTrue(any(change["reason"] == "fractional_ml_vessel_to_quantity" for change in corrections))
+
 
 if __name__ == "__main__":
     unittest.main()
