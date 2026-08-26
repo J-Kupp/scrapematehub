@@ -35,6 +35,7 @@ Python 3.12 is the CI and deployment baseline.
 python3.12 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 PLAYWRIGHT_BROWSERS_PATH="$PWD/.playwright-browsers" .venv/bin/python -m playwright install chromium
+.venv/bin/python tools/check_repo_hygiene.py
 .venv/bin/python -m unittest discover -s tests -v
 ```
 
