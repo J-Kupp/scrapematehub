@@ -80,8 +80,8 @@ class CleanerTests(unittest.TestCase):
         self.assertEqual(cleaned["Bundle size"], "")
         self.assertEqual(cleaned["Bundle type"], "")
 
-    def test_fractional_gram_vessel_is_flattened_to_quantity(self) -> None:
-        rows, _ = clean_rows(
+    def test_fractional_gram_vessel_is_rounded_to_nearest_gram(self) -> None:
+        rows, corrections = clean_rows(
             [
                 self.make_row(
                     **{
@@ -97,12 +97,13 @@ class CleanerTests(unittest.TestCase):
             ]
         )
         cleaned = rows[0]
-        self.assertEqual(cleaned["Vessel size"], "1")
-        self.assertEqual(cleaned["Vessel unit"], "quantity")
+        self.assertEqual(cleaned["Vessel size"], "17")
+        self.assertEqual(cleaned["Vessel unit"], "g")
         self.assertEqual(cleaned["Bundle size"], "24")
         self.assertEqual(cleaned["Bundle type"], "PK")
+        self.assertTrue(any(change["reason"] == "round_fractional_g_vessel" for change in corrections))
 
-    def test_fractional_milliliter_vessel_is_flattened_to_quantity(self) -> None:
+    def test_fractional_milliliter_vessel_is_rounded_to_nearest_milliliter(self) -> None:
         rows, corrections = clean_rows(
             [
                 self.make_row(
@@ -117,9 +118,9 @@ class CleanerTests(unittest.TestCase):
             ]
         )
         cleaned = rows[0]
-        self.assertEqual(cleaned["Vessel size"], "1")
-        self.assertEqual(cleaned["Vessel unit"], "quantity")
-        self.assertTrue(any(change["reason"] == "fractional_ml_vessel_to_quantity" for change in corrections))
+        self.assertEqual(cleaned["Vessel size"], "5")
+        self.assertEqual(cleaned["Vessel unit"], "ml")
+        self.assertTrue(any(change["reason"] == "round_fractional_ml_vessel" for change in corrections))
 
 
 if __name__ == "__main__":

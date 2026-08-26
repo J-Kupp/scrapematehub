@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import re
 from copy import deepcopy
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path
 
 from export import write_csv_rows
@@ -380,6 +381,14 @@ def is_integer_numeric_string(value: str) -> bool:
     return number is not None and number.is_integer()
 
 
+def round_to_nearest_integer(value: str) -> str:
+    try:
+        number = Decimal(normalize_decimal_string(value))
+    except (InvalidOperation, ValueError):
+        return value
+    return str(int(number.quantize(Decimal("1"), rounding=ROUND_HALF_UP)))
+
+
 def is_valid_bundle_size(value: str) -> bool:
     number = parse_float_value(value)
     return number is not None and number.is_integer() and int(number) >= 2
@@ -565,12 +574,9 @@ def clean_rows(rows: list[dict[str, str]]) -> tuple[list[dict[str, str]], list[d
 
         if row["Vessel unit"] in {"g", "ml"} and row["Vessel size"] and not is_integer_numeric_string(row["Vessel size"]):
             before_size = row["Vessel size"]
-            before_unit = row["Vessel unit"]
-            row["Vessel size"] = "1"
-            row["Vessel unit"] = "quantity"
-            reason = f"fractional_{before_unit}_vessel_to_quantity"
-            record_change(corrections, row_number=index, item_id_before=original_item_id, item_id_after=final_item_id, field="Vessel size", value_before=before_size, value_after="1", reason=reason)
-            record_change(corrections, row_number=index, item_id_before=original_item_id, item_id_after=final_item_id, field="Vessel unit", value_before=before_unit, value_after="quantity", reason=reason)
+            row["Vessel size"] = round_to_nearest_integer(before_size)
+            reason = f"round_fractional_{row['Vessel unit']}_vessel"
+            record_change(corrections, row_number=index, item_id_before=original_item_id, item_id_after=final_item_id, field="Vessel size", value_before=before_size, value_after=row["Vessel size"], reason=reason)
 
         interpreted_flattened_quantity = (
             row["Vessel unit"] == "quantity"
