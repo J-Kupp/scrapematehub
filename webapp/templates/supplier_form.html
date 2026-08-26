@@ -126,14 +126,18 @@
       <label>Schedule frequency
         <select name="schedule_frequency">
           <option value="weekly" {% if schedule.get('frequency', 'weekly') == 'weekly' %}selected{% endif %}>Weekly</option>
+          <option value="monthly" {% if schedule.get('frequency') == 'monthly' %}selected{% endif %}>Monthly</option>
         </select>
       </label>
-      <label>Weekday
+      <label>Weekday (weekly)
         <select name="schedule_weekday">
           {% for day in ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'] %}
           <option value="{{ day }}" {% if schedule.get('weekday', 'monday') == day %}selected{% endif %}>{{ day.capitalize() }}</option>
           {% endfor %}
         </select>
+      </label>
+      <label>Day of month (monthly)
+        <input type="number" min="1" max="28" name="schedule_monthday" value="{{ schedule.get('monthday', '1') }}" />
       </label>
       <label>Time
         <input type="time" name="schedule_time" value="{{ schedule.get('time', '03:30') }}" />

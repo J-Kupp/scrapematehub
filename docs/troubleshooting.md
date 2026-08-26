@@ -63,6 +63,8 @@ edit application source directly on EC2.
 4. Check the EC2 service log for scheduler startup or configuration errors.
 5. Do not edit `suppliers.json` expecting it to overwrite a current dashboard schedule. Runtime
    schedule state is persistent by design.
+6. Weekly schedules use a weekday; monthly schedules use a calendar day from `1` to `28` to avoid
+   skipped short months. Both run at the selected local Zurich time.
 
 ## Automated Error Email Did Not Arrive
 

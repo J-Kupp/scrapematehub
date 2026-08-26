@@ -349,6 +349,10 @@ def describe_schedule(schedule: dict[str, Any]) -> str:
         weekday = str(schedule.get("weekday", "monday")).strip().capitalize()
         time_text = str(schedule.get("time", "03:30")).strip()
         return f"Weekly on {weekday} at {time_text}"
+    if frequency == "monthly":
+        monthday = str(schedule.get("monthday", "1")).strip()
+        time_text = str(schedule.get("time", "03:30")).strip()
+        return f"Monthly on day {monthday} at {time_text}"
     if frequency == "disabled":
         return "Disabled"
     return json.dumps(schedule, ensure_ascii=False)
@@ -379,6 +383,7 @@ def normalize_schedule_form(
     enabled: bool,
     frequency: str,
     weekday: str,
+    monthday: str,
     time_text: str,
 ) -> dict[str, str]:
     if not enabled:
@@ -386,6 +391,7 @@ def normalize_schedule_form(
     return {
         "frequency": frequency.strip().lower() or "weekly",
         "weekday": weekday.strip().lower() or "monday",
+        "monthday": monthday.strip() or "1",
         "time": time_text.strip() or "03:30",
     }
 
@@ -403,6 +409,7 @@ def build_supplier_from_form(
     schedule_enabled: bool,
     schedule_frequency: str,
     schedule_weekday: str,
+    schedule_monthday: str,
     schedule_time: str,
     concurrency: str,
     min_delay_seconds: str,
@@ -439,6 +446,7 @@ def build_supplier_from_form(
             enabled=schedule_enabled,
             frequency=schedule_frequency,
             weekday=schedule_weekday,
+            monthday=schedule_monthday,
             time_text=schedule_time,
         ),
         ybm_api_base=ybm_api_base.strip() or "https://connect.yourbarmate.com/api",

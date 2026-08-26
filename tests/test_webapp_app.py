@@ -113,8 +113,9 @@ class WebAppAppTests(unittest.TestCase):
                         "output_dir": "output/demo",
                         "ybm_api_base": "https://connect.yourbarmate.com/api",
                         "schedule_enabled": "on",
-                        "schedule_frequency": "weekly",
+                        "schedule_frequency": "monthly",
                         "schedule_weekday": "friday",
+                        "schedule_monthday": "15",
                         "schedule_time": "04:15",
                         "concurrency": "1",
                         "min_delay_seconds": "0.10",
@@ -136,6 +137,8 @@ class WebAppAppTests(unittest.TestCase):
                 api_supplier_response = client.get("/api/suppliers/demo")
                 self.assertEqual(api_supplier_response.status_code, 200)
                 self.assertTrue(api_supplier_response.json()["secret_present"])
+                self.assertEqual(api_supplier_response.json()["schedule"]["frequency"], "monthly")
+                self.assertEqual(api_supplier_response.json()["schedule"]["monthday"], "15")
                 self.assertEqual(
                     api_supplier_response.json()["onboarding"]["stage"],
                     "Config only",
