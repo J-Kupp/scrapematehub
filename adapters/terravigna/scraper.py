@@ -313,21 +313,33 @@ class TerraVignaAdapter(SupplierAdapter):
                 "document.cookie.includes('techaro.lol-anubis-auth-auth')",
                 timeout=30_000,
             )
-            response = await page.evaluate(
-                """async (query) => {
-                    const result = await fetch('/graphql', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
-                        body: JSON.stringify({query}),
-                    });
-                    return {
-                        status: result.status,
-                        contentType: result.headers.get('content-type') || '',
-                        body: await result.text(),
-                    };
-                }""",
-                GRAPHQL_QUERY,
-            )
+            # Anubis sets its auth cookie shortly before redirecting back to the
+            # requested page. Wait for that redirect before evaluating GraphQL.
+            await page.wait_for_timeout(1_000)
+            response = None
+            for attempt in range(3):
+                try:
+                    response = await page.evaluate(
+                        """async (query) => {
+                            const result = await fetch('/graphql', {
+                                method: 'POST',
+                                headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+                                body: JSON.stringify({query}),
+                            });
+                            return {
+                                status: result.status,
+                                contentType: result.headers.get('content-type') || '',
+                                body: await result.text(),
+                            };
+                        }""",
+                        GRAPHQL_QUERY,
+                    )
+                    break
+                except Exception:
+                    if attempt == 2:
+                        raise
+                    await page.wait_for_timeout(1_000)
+            assert response is not None
             if response["status"] != 200 or "json" not in response["contentType"].lower():
                 raise ScraperError(
                     f"GraphQL returned HTTP {response['status']} ({response['contentType'] or 'unknown content type'})"
