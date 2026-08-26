@@ -101,7 +101,7 @@ class CleanerTests(unittest.TestCase):
         self.assertEqual(cleaned["Vessel unit"], "g")
         self.assertEqual(cleaned["Bundle size"], "24")
         self.assertEqual(cleaned["Bundle type"], "PK")
-        self.assertTrue(any(change["reason"] == "round_fractional_g_vessel" for change in corrections))
+        self.assertTrue(any(change["reason"] == "round_vessel_size_g" for change in corrections))
 
     def test_fractional_milliliter_vessel_is_rounded_to_nearest_milliliter(self) -> None:
         rows, corrections = clean_rows(
@@ -120,7 +120,19 @@ class CleanerTests(unittest.TestCase):
         cleaned = rows[0]
         self.assertEqual(cleaned["Vessel size"], "5")
         self.assertEqual(cleaned["Vessel unit"], "ml")
-        self.assertTrue(any(change["reason"] == "round_fractional_ml_vessel" for change in corrections))
+        self.assertTrue(any(change["reason"] == "round_vessel_size_ml" for change in corrections))
+
+    def test_vessel_sizes_follow_unit_precision_rules(self) -> None:
+        rows, _ = clean_rows(
+            [
+                self.make_row(**{"Vessel size": "0.0005", "Vessel unit": "kg"}),
+                self.make_row(**{"Vessel size": "1.2346", "Vessel unit": "l"}),
+                self.make_row(**{"Vessel size": "1.234", "Vessel unit": "dl"}),
+                self.make_row(**{"Vessel size": "1.26", "Vessel unit": "cl"}),
+                self.make_row(**{"Vessel size": "2.8", "Vessel unit": "quantity"}),
+            ]
+        )
+        self.assertEqual([row["Vessel size"] for row in rows], ["0.001", "1.235", "1.23", "1.3", "3"])
 
 
 if __name__ == "__main__":
