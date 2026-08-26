@@ -18,6 +18,7 @@ from adapters.terravigna.transform import (
     extract_next_listing_url,
     extract_product_links,
     extract_sitemap_product_links,
+    parse_graphql_product_record,
     parse_product_record,
 )
 from config import get_cache_root, get_log_root
@@ -29,6 +30,22 @@ USER_AGENT = (
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 )
 REQUEST_TIMEOUT_MS = 60_000
+GRAPHQL_QUERY = """
+{
+  products(search: \"\", pageSize: 2000, currentPage: 1) {
+    total_count
+    items {
+      name sku url_key stock_status
+      description { html }
+      short_description { html }
+      image { url label }
+      media_gallery { url label position disabled }
+      categories { name url_path }
+      price_range { minimum_price { final_price { value currency } } }
+    }
+  }
+}
+"""
 
 
 class ScraperError(RuntimeError):
@@ -136,13 +153,54 @@ class TerraVignaAdapter(SupplierAdapter):
                 user_agent=USER_AGENT,
                 extra_http_headers=headers,
             )
-            browser = await playwright.chromium.launch(headless=True)
-            browser_context = await browser.new_context(
-                user_agent=USER_AGENT,
-                extra_http_headers=headers,
-                locale="de-CH",
-            )
             try:
+                catalog_records = await self._fetch_graphql_catalog(context, logger)
+                if catalog_records:
+                    if self.max_products:
+                        catalog_records = catalog_records[: self.max_products]
+                    product_urls = [
+                        f"{self.base_url}/{record['url_key'].lstrip('/')}"
+                        for record in catalog_records
+                        if record.get("url_key")
+                    ]
+                    logger.info(
+                        "PROGRESS phase=discovering found=%s pages=1 expected=%s",
+                        len(product_urls),
+                        len(product_urls),
+                    )
+                    products, raw_count, interpreted_count = self._transform_graphql_catalog(
+                        catalog_records,
+                        failures,
+                        logger,
+                    )
+                    listing_diagnostics.append(
+                        {
+                            "page_url": f"{self.base_url}/graphql",
+                            "page_index": "1",
+                            "product_url_count": str(len(product_urls)),
+                            "cumulative_product_url_count": str(len(product_urls)),
+                            "expected_product_count": str(len(product_urls)),
+                            "source": "magento_graphql_catalog",
+                        }
+                    )
+                    return SupplierScrapeResult(
+                        products=products,
+                        failures=failures,
+                        discovered_product_urls=set(product_urls),
+                        listing_diagnostics=listing_diagnostics,
+                        covered_product_url_count=len(products) + len(failures),
+                        raw_record_count=raw_count,
+                        interpreted_record_count=interpreted_count,
+                    )
+
+                # This legacy HTML route remains as a documented fallback when the
+                # public Magento catalog API is unavailable.
+                browser = await playwright.chromium.launch(headless=True)
+                browser_context = await browser.new_context(
+                    user_agent=USER_AGENT,
+                    extra_http_headers=headers,
+                    locale="de-CH",
+                )
                 fetcher = Fetcher(
                     context,
                     raw_html_dir=self.raw_html_dir,
@@ -194,8 +252,9 @@ class TerraVignaAdapter(SupplierAdapter):
                 )
             finally:
                 await context.dispose()
-                await browser_context.close()
-                await browser.close()
+                if "browser_context" in locals():
+                    await browser_context.close()
+                    await browser.close()
 
         logger.info(
             "TerraVigna scrape completed. discovered=%s parsed=%s failures=%s",
@@ -212,6 +271,63 @@ class TerraVignaAdapter(SupplierAdapter):
             raw_record_count=raw_count,
             interpreted_record_count=interpreted_count,
         )
+
+    async def _fetch_graphql_catalog(
+        self,
+        context: APIRequestContext,
+        logger: logging.Logger,
+    ) -> list[dict]:
+        """Read the public Magento catalog API, which is available to Fargate."""
+        try:
+            response = await context.post(
+                f"{self.base_url}/graphql",
+                data={"query": GRAPHQL_QUERY},
+                timeout=REQUEST_TIMEOUT_MS,
+            )
+            if not response.ok:
+                raise ScraperError(f"HTTP {response.status}")
+            payload = await response.json()
+            if payload.get("errors"):
+                raise ScraperError(str(payload["errors"]))
+            records = payload.get("data", {}).get("products", {}).get("items", [])
+            if not isinstance(records, list):
+                raise ScraperError("GraphQL products.items was not a list")
+            logger.info("TerraVigna Magento GraphQL catalog returned %s products.", len(records))
+            return [record for record in records if isinstance(record, dict)]
+        except Exception as exc:
+            logger.warning("TerraVigna Magento GraphQL catalog unavailable: %s", exc)
+            return []
+
+    def _transform_graphql_catalog(
+        self,
+        records: list[dict],
+        failures: list[dict[str, str]],
+        logger: logging.Logger,
+    ) -> tuple[list, int, int]:
+        products = []
+        total = len(records)
+        logger.info("PROGRESS phase=processing found=%s processed=0 scraped=0 total=%s", total, total)
+        for processed, record in enumerate(records, start=1):
+            product = parse_graphql_product_record(record, self.base_url)
+            if product is None:
+                failures.append(
+                    {
+                        "stage": "transform",
+                        "url": f"{self.base_url}/{record.get('url_key', '')}",
+                        "reason": "Magento GraphQL record missing name or URL key",
+                    }
+                )
+            else:
+                products.append(product)
+            if processed % 25 == 0 or processed == total:
+                logger.info(
+                    "PROGRESS phase=processing found=%s processed=%s scraped=%s total=%s",
+                    total,
+                    processed,
+                    len(products),
+                    total,
+                )
+        return products, total, len(products)
 
     async def _discover_product_urls(
         self,

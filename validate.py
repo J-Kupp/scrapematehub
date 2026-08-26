@@ -20,6 +20,10 @@ def validate_rows(
 ) -> ValidationResult:
     warnings: list[str] = []
     errors: list[str] = []
+    if discovered_product_urls and not rows:
+        errors.append(
+            "No products were exported although product URLs were discovered; refusing an empty catalog sync."
+        )
     if rows and list(rows[0].keys()) != CSV_COLUMNS:
         errors.append("CSV columns do not match the required schema order.")
 

@@ -7,6 +7,7 @@ from adapters.terravigna.transform import (
     extract_next_listing_url,
     extract_product_links,
     extract_sitemap_product_links,
+    parse_graphql_product_record,
     parse_product_record,
 )
 
@@ -74,3 +75,29 @@ class TerraVignaTransformTests(unittest.TestCase):
         self.assertEqual(product.vessel_unit, "cl")
         self.assertEqual(product.specs["rebsorten"], "Glera")
         self.assertEqual(product.specs["vinifikation"], "Methode Charmat")
+
+    def test_graphql_product_record_uses_public_catalog_data_and_images(self) -> None:
+        product = parse_graphql_product_record(
+            {
+                "name": "Example Prosecco DOCG 75 cl",
+                "sku": "TV-20122",
+                "url_key": "example-prosecco",
+                "stock_status": "IN_STOCK",
+                "description": {"html": "<p>Fresh and elegant.</p>"},
+                "image": {"url": "https://cdn.example/wine.png"},
+                "media_gallery": [
+                    {"url": "https://cdn.example/wine.png", "disabled": False},
+                    {"url": "https://cdn.example/back.png", "disabled": False},
+                ],
+                "categories": [{"name": "Shop"}, {"name": "Schaumwein"}],
+                "price_range": {"minimum_price": {"final_price": {"value": 14.5, "currency": "CHF"}}},
+            },
+            "https://www.terravigna.ch",
+        )
+        assert product is not None
+        self.assertEqual(product.product_url, "https://www.terravigna.ch/example-prosecco")
+        self.assertEqual(product.category_path, "Schaumwein")
+        self.assertEqual(product.price, "14.5")
+        self.assertEqual(product.image_url, "https://cdn.example/wine.png")
+        self.assertEqual(product.description, "Fresh and elegant.")
+        self.assertEqual(product.specs["image_count"], "2")
