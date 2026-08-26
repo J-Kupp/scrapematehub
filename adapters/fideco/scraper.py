@@ -9,7 +9,7 @@ import re
 import time
 from pathlib import Path
 
-from playwright.async_api import APIRequestContext, async_playwright
+import httpx
 from tenacity import AsyncRetrying, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from adapters.base import SupplierAdapter
@@ -26,7 +26,7 @@ from core.contracts import SupplierScrapeResult
 
 
 USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/126.0.0.0 Safari/537.36"
-REQUEST_TIMEOUT_MS = 60_000
+REQUEST_TIMEOUT_SECONDS = 60.0
 
 
 class ScraperError(RuntimeError):
@@ -34,8 +34,8 @@ class ScraperError(RuntimeError):
 
 
 class Fetcher:
-    def __init__(self, context: APIRequestContext, *, raw_html_dir: Path, cache_dir: Path, min_delay_seconds: float, max_delay_seconds: float) -> None:
-        self.context = context
+    def __init__(self, client: httpx.AsyncClient, *, raw_html_dir: Path, cache_dir: Path, min_delay_seconds: float, max_delay_seconds: float) -> None:
+        self.client = client
         self.raw_html_dir = raw_html_dir
         self.cache_manifest = cache_dir / "manifest.jsonl"
         self.min_delay_seconds = min_delay_seconds
@@ -54,13 +54,13 @@ class Fetcher:
         async for attempt in AsyncRetrying(stop=stop_after_attempt(4), wait=wait_exponential(multiplier=1, min=1, max=10), retry=retry_if_exception_type(Exception), reraise=True):
             with attempt:
                 await asyncio.sleep(random.uniform(self.min_delay_seconds, self.max_delay_seconds))
-                response = await self.context.get(url, timeout=REQUEST_TIMEOUT_MS)
-                if not response.ok:
+                response = await self.client.get(url)
+                if response.is_error:
                     raise ScraperError(f"HTTP {response.status} for {url}")
-                html = await response.text()
+                html = response.text
                 snapshot_path.write_text(html, encoding="utf-8")
                 with self.cache_manifest.open("a", encoding="utf-8") as handle:
-                    handle.write(json.dumps({"fetched_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "url": url, "status_code": response.status, "snapshot_path": str(snapshot_path)}) + "\n")
+                    handle.write(json.dumps({"fetched_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "url": url, "status_code": response.status_code, "snapshot_path": str(snapshot_path)}) + "\n")
                 return html
         raise ScraperError(f"Could not fetch {url}")
 
@@ -99,18 +99,27 @@ class FidecoAdapter(SupplierAdapter):
         logger = self.setup_logger()
         failures: list[dict[str, str]] = []
         diagnostics: list[dict[str, str]] = []
-        async with async_playwright() as playwright:
-            context = await playwright.request.new_context(base_url=self.base_url, user_agent=USER_AGENT, extra_http_headers={"Accept": "text/html,application/xhtml+xml", "Accept-Language": "de-CH,de;q=0.9"})
-            try:
-                fetcher = Fetcher(context, raw_html_dir=self.raw_html_dir, cache_dir=self.cache_dir, min_delay_seconds=self.min_delay_seconds, max_delay_seconds=self.max_delay_seconds)
-                product_urls = await self._discover_product_urls(fetcher, failures, diagnostics, logger, force_refresh=force_refresh)
-                if not product_urls:
-                    raise ScraperError("No Fideco products were discovered from the public product-group navigation.")
-                if self.max_products:
-                    product_urls = product_urls[: self.max_products]
-                products, raw_count, interpreted_count = await self._fetch_products(product_urls, fetcher, failures, logger, force_refresh=force_refresh)
-            finally:
-                await context.dispose()
+        # Fideco returns server-rendered Shopware pages. Using httpx rather than a
+        # long-lived Playwright request driver avoids IPC exhaustion on full catalog runs.
+        connection_limit = max(self.detail_concurrency, self.category_concurrency) * 2
+        async with httpx.AsyncClient(
+            base_url=self.base_url,
+            headers={
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "de-CH,de;q=0.9,en;q=0.8",
+                "User-Agent": USER_AGENT,
+            },
+            follow_redirects=True,
+            timeout=httpx.Timeout(REQUEST_TIMEOUT_SECONDS),
+            limits=httpx.Limits(max_connections=connection_limit, max_keepalive_connections=connection_limit),
+        ) as client:
+            fetcher = Fetcher(client, raw_html_dir=self.raw_html_dir, cache_dir=self.cache_dir, min_delay_seconds=self.min_delay_seconds, max_delay_seconds=self.max_delay_seconds)
+            product_urls = await self._discover_product_urls(fetcher, failures, diagnostics, logger, force_refresh=force_refresh)
+            if not product_urls:
+                raise ScraperError("No Fideco products were discovered from the public product-group navigation.")
+            if self.max_products:
+                product_urls = product_urls[: self.max_products]
+            products, raw_count, interpreted_count = await self._fetch_products(product_urls, fetcher, failures, logger, force_refresh=force_refresh)
         logger.info("Fideco scrape completed. discovered=%s parsed=%s failures=%s", len(product_urls), len(products), len(failures))
         return SupplierScrapeResult(products=products, failures=failures, discovered_product_urls=set(product_urls), listing_diagnostics=diagnostics, covered_product_url_count=len(products), raw_record_count=raw_count, interpreted_record_count=interpreted_count)
 
