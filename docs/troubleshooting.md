@@ -47,6 +47,9 @@ edit application source directly on EC2.
 4. Use a dry run to inspect create/update/inactivate counts before retrying a live sync.
 5. Check the selected catalog policy. `delete_missing` can inactivate products that a complete run
    no longer returns; `keep_existing` does not.
+6. A `5xx` from YourBarMate is treated as transient for product creation: the worker checks the
+   deterministic product ID and retries safely. A `400` remains a real payload error and needs a
+   data or mapping fix.
 
 ## Scheduled Job Did Not Run
 

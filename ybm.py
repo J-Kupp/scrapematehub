@@ -5,6 +5,7 @@ import json
 import os
 import re
 import ssl
+import time
 from dataclasses import asdict
 from decimal import Decimal, ROUND_HALF_UP
 from pathlib import Path
@@ -53,7 +54,9 @@ BUNDLE_TYPE_CODES = {
 
 
 class YbmApiError(RuntimeError):
-    pass
+    def __init__(self, message: str, *, status_code: int | None = None) -> None:
+        super().__init__(message)
+        self.status_code = status_code
 
 
 COMMON_CA_BUNDLE_PATHS = (
@@ -537,7 +540,7 @@ class YbmSyncClient:
                 body = response.read()
         except error.HTTPError as exc:
             body = exc.read().decode("utf-8", errors="replace")
-            raise YbmApiError(f"{method} {path} failed with {exc.code}: {body}") from exc
+            raise YbmApiError(f"{method} {path} failed with {exc.code}: {body}", status_code=exc.code) from exc
         except error.URLError as exc:
             raise YbmApiError(f"{method} {path} failed: {exc.reason}") from exc
         if not body:
@@ -565,7 +568,27 @@ class YbmSyncClient:
                 return products
 
     def create_product(self, payload: dict[str, Any]) -> dict[str, Any]:
-        return self._request_json("POST", "/products", payload=payload)
+        # Product IDs are deterministic. A GET after a server error lets us avoid
+        # duplicate creation when the API processed a request but lost its response.
+        for delay_seconds in (0, 1, 3):
+            if delay_seconds:
+                time.sleep(delay_seconds)
+            try:
+                return self._request_json("POST", "/products", payload=payload)
+            except YbmApiError as exc:
+                if exc.status_code is None or exc.status_code < 500:
+                    raise
+                try:
+                    return self._request_json(
+                        "GET",
+                        f"/products/{parse.quote(str(payload['id']), safe='')}",
+                    )
+                except YbmApiError as lookup_error:
+                    if lookup_error.status_code != 404:
+                        raise exc from lookup_error
+                    if delay_seconds == 3:
+                        raise
+        raise AssertionError("Unreachable product-create retry state")
 
     def patch_product(self, product_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         body = dict(payload)
