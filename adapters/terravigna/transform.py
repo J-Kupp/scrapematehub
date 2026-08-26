@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from typing import Any
 from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup
@@ -179,6 +180,68 @@ def parse_product_record(html: str, product_url: str) -> NormalizedProduct | Non
         region=region,
         country=country,
         labels=[attributes["Typ"]] if attributes.get("Typ") else [],
+        vessel_size=vessel_size,
+        vessel_unit=vessel_unit,
+        specs=specs,
+    )
+
+
+def parse_graphql_product_record(record: dict[str, Any], base_url: str) -> NormalizedProduct | None:
+    """Normalize the public Magento catalog response used when detail HTML is blocked."""
+    name = normalize_space(str(record.get("name") or ""))
+    url_key = normalize_space(str(record.get("url_key") or ""))
+    if not name or not url_key:
+        return None
+
+    product_url = canonicalize_url(f"{base_url.rstrip('/')}/{url_key.lstrip('/')}")
+    price_data = (
+        record.get("price_range", {})
+        .get("minimum_price", {})
+        .get("final_price", {})
+    )
+    raw_price = price_data.get("value", "")
+    price = f"{raw_price:g}" if isinstance(raw_price, (int, float)) else normalize_space(str(raw_price or ""))
+    categories = [
+        normalize_space(str(category.get("name") or ""))
+        for category in record.get("categories") or []
+        if isinstance(category, dict) and normalize_space(str(category.get("name") or "")) not in {"", "Shop"}
+    ]
+    image = record.get("image") if isinstance(record.get("image"), dict) else {}
+    image_url = normalize_space(str(image.get("url") or ""))
+    gallery_urls = [
+        normalize_space(str(item.get("url") or ""))
+        for item in record.get("media_gallery") or []
+        if isinstance(item, dict) and not item.get("disabled") and normalize_space(str(item.get("url") or ""))
+    ]
+    description_html = ""
+    for key in ("description", "short_description"):
+        value = record.get(key)
+        if isinstance(value, dict) and value.get("html"):
+            description_html = str(value["html"])
+            break
+    description = normalize_space(BeautifulSoup(description_html, "lxml").get_text(" ", strip=True))
+    vessel_size, vessel_unit = _extract_vessel([name])
+    stock_status = normalize_space(str(record.get("stock_status") or ""))
+    specs = {
+        "source": "terravigna_magento_graphql",
+        "stock_status": stock_status,
+        "image_count": str(len(gallery_urls)),
+    }
+    if gallery_urls:
+        specs["additional_image_urls"] = " | ".join(dict.fromkeys(gallery_urls))
+
+    return NormalizedProduct(
+        product_url=product_url,
+        canonical_url=product_url,
+        category_path=" > ".join(dict.fromkeys(categories)),
+        product_name=name,
+        item_name=name,
+        sku=normalize_space(str(record.get("sku") or "")),
+        price=price,
+        currency=normalize_space(str(price_data.get("currency") or "")),
+        status="OUT_OF_STOCK" if stock_status == "OUT_OF_STOCK" else "ACTIVE",
+        image_url=image_url or (gallery_urls[0] if gallery_urls else ""),
+        description=description,
         vessel_size=vessel_size,
         vessel_unit=vessel_unit,
         specs=specs,
