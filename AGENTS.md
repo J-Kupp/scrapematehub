@@ -1,5 +1,16 @@
 # ScrapeMate Hub Contribution Rules
 
+## Documentation first
+
+Before changing code or infrastructure, read the relevant authoritative runbook:
+- `docs/architecture.md`: boundaries, data flow, and sources of truth
+- `docs/new-supplier.md`: supplier-adapter implementation checklist
+- `docs/aws-runbook.md`: AWS services, secrets, and runtime ownership
+- `docs/deployment-and-rollback.md`: delivery and recovery procedure
+- `docs/troubleshooting.md`: safe diagnosis of common production problems
+
+Do not treat generated artifacts, local caches, or the EC2 application directory as source code.
+
 ## Supplier adapter quality gate
 
 Every supplier adapter must meet these requirements before it can be merged:
