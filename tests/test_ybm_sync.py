@@ -3,7 +3,9 @@ from __future__ import annotations
 import json
 import os
 import unittest
+from io import BytesIO
 from unittest.mock import patch
+from urllib.error import HTTPError
 from urllib.parse import parse_qs, urlparse
 
 from models import NormalizedProduct, SupplierConfig
@@ -29,11 +31,13 @@ class MockYbmBackend:
         self.categories: dict[str, dict] = {}
         self.products: dict[str, dict] = {}
         self.auth_headers: list[str] = []
+        self.transient_product_create_failures = 0
 
     def reset(self) -> None:
         self.categories.clear()
         self.products.clear()
         self.auth_headers.clear()
+        self.transient_product_create_failures = 0
 
     def urlopen(self, req, timeout=None, context=None):  # type: ignore[no-untyped-def]
         del timeout, context
@@ -61,7 +65,15 @@ class MockYbmBackend:
             page = products[cursor : cursor + 1]
             next_cursor = str(cursor + 1) if cursor + 1 < len(products) else ""
             return MockHttpResponse({"products": page, "cursor": next_cursor})
+        if method == "GET" and path.startswith("/products/"):
+            product_id = path.rsplit("/", 1)[-1]
+            if product_id not in self.products:
+                raise HTTPError(req.full_url, 404, "Not Found", None, BytesIO(b'{"code":"E_NOT_FOUND"}'))
+            return MockHttpResponse(self.products[product_id])
         if method == "POST" and path == "/products":
+            if self.transient_product_create_failures:
+                self.transient_product_create_failures -= 1
+                raise HTTPError(req.full_url, 500, "Internal Server Error", None, BytesIO(b'{"code":"E_FAILED"}'))
             self.products[payload["id"]] = payload
             return MockHttpResponse(payload)
         if method == "PATCH" and path.startswith("/products/"):
@@ -204,6 +216,14 @@ class YbmSyncTests(unittest.TestCase):
         summary, _, _ = sync_rows_to_ybm(config, [self.make_row(item_id="SKU-EXISTING-CAT")], dry_run=False)
         self.assertEqual(summary.created_categories, 0)
         self.assertEqual(self.backend.products["SKU-EXISTING-CAT"]["category"], "cat_existing")
+
+    def test_sync_retries_a_transient_product_create_error(self) -> None:
+        self.backend.transient_product_create_failures = 1
+        with patch("ybm.time.sleep") as sleep:
+            summary, _, _ = sync_rows_to_ybm(self.make_config(), [self.make_row(price="")], dry_run=False)
+        self.assertEqual(summary.created_products, 1)
+        self.assertIn("SKU-1", self.backend.products)
+        sleep.assert_called_once_with(1)
 
     def test_row_based_sync_can_limit_products_and_skip_inactivate(self) -> None:
         config = self.make_config()
