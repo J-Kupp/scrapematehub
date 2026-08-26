@@ -50,9 +50,8 @@ edit application source directly on EC2.
 6. A `5xx` from YourBarMate is treated as transient for product creation: the worker checks the
    deterministic product ID and retries safely. A `400` remains a real payload error and needs a
    data or mapping fix.
-7. YourBarMate accepts products without a price. Its product API rejects fractional `ml` vessel
-   sizes with a server `500`; the cleaner converts those records to `1 quantity` while preserving
-   the original size in the product name.
+7. YourBarMate accepts products without a price. Its product API rejects fractional `g` and `ml`
+   vessel sizes with a server `500`; the cleaner rounds them to the nearest whole unit before sync.
 
 ## Scheduled Job Did Not Run
 
