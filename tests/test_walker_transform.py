@@ -89,6 +89,12 @@ class WalkerTransformTests(unittest.TestCase):
             1001,
         )
 
+    def test_extract_manufacturer_link_ignores_non_web_contact_links(self) -> None:
+        from adapters.walker.transform import extract_manufacturer_link
+
+        html = '<dl class="article-spec-infos"><dt>Link</dt><dd><a href="mailto:info@walker.swiss">Contact</a></dd></dl>'
+        self.assertEqual(extract_manufacturer_link(html, "https://shop.walker.swiss"), "")
+
     def test_parse_product_record_includes_external_page_enrichment(self) -> None:
         product_html = """
         <nav class="opc-breadcrumb">
