@@ -126,7 +126,8 @@ def extract_manufacturer_link(html: str, base_url: str) -> str:
         dd = dt.find_next_sibling("dd")
         if key == "link" and dd:
             link = dd.select_one("a[href]")
-            return absolute_url(base_url, link.get("href")) if link else ""
+            url = absolute_url(base_url, link.get("href")) if link else ""
+            return url if urlparse(url).scheme in {"http", "https"} else ""
     return ""
 
 
