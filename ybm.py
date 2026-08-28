@@ -639,7 +639,6 @@ def sync_to_ybm(
         for product_id in remote_products_by_id
         if product_id.startswith(f"{config.supplier_slug}__")
     }
-    summary.old_catalog_products = len(owned_remote_product_ids)
 
     local_categories = map_categories(products, config.supplier_slug)
     categories_to_sync, category_aliases = reconcile_categories(local_categories, remote_categories)
@@ -663,6 +662,7 @@ def sync_to_ybm(
     if limit_products is not None:
         local_payloads = dict(sorted(local_payloads.items())[:limit_products])
     local_payloads = remap_payload_categories(local_payloads, category_aliases)
+    summary.old_catalog_products = len(set(local_payloads) & set(remote_products_by_id))
     for product_id, payload in sorted(local_payloads.items()):
         remote = remote_products_by_id.get(product_id)
         if remote is None:
@@ -719,7 +719,6 @@ def sync_rows_to_ybm(
         for product_id in remote_products_by_id
         if product_id.startswith(f"{config.supplier_slug}__")
     }
-    summary.old_catalog_products = len(owned_remote_product_ids)
 
     local_categories = map_categories_from_rows(rows, config.supplier_slug)
     categories_to_sync, category_aliases = reconcile_categories(local_categories, remote_categories)
@@ -740,6 +739,7 @@ def sync_rows_to_ybm(
     if limit_products is not None:
         local_payloads = dict(sorted(local_payloads.items())[:limit_products])
     local_payloads = remap_payload_categories(local_payloads, category_aliases)
+    summary.old_catalog_products = len(set(local_payloads) & set(remote_products_by_id))
 
     for product_id, payload in sorted(local_payloads.items()):
         remote = remote_products_by_id.get(product_id)

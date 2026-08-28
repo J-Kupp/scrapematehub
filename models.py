@@ -183,6 +183,7 @@ class SupplierRunResult:
     covered_product_url_count: int
     raw_record_count: int = 0
     interpreted_record_count: int = 0
+    enrichment_failures: list[dict[str, str]] = field(default_factory=list)
 
 
 @dataclass

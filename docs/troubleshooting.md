@@ -47,10 +47,12 @@ edit application source directly on EC2.
 4. Use a dry run to inspect create/update/inactivate counts before retrying a live sync.
 5. Check the selected catalog policy. `delete_missing` can inactivate products that a complete run
    no longer returns; `keep_existing` does not.
-6. A `5xx` from YourBarMate is treated as transient for product creation: the worker checks the
+6. Read product failures separately from optional enrichment failures. An unavailable manufacturer
+   page does not remove an otherwise parsed supplier product or block its sync.
+7. A `5xx` from YourBarMate is treated as transient for product creation: the worker checks the
    deterministic product ID and retries safely. A `400` remains a real payload error and needs a
    data or mapping fix.
-7. YourBarMate accepts products without a price. Vessel sizes are normalized before sync: `g`,
+8. YourBarMate accepts products without a price. Vessel sizes are normalized before sync: `g`,
    `ml`, and `quantity` are whole numbers; `cl` allows one decimal; `dl` two; `kg` and `l` three.
    Positive values below a unit's smallest supported precision round up to that minimum.
    See [Architecture](architecture.md#shared-vessel-size-contract) for the authoritative contract.
