@@ -150,6 +150,7 @@ def build_run_summary(
         "covered_product_url_count": run_result.covered_product_url_count,
         "raw_record_count": run_result.raw_record_count,
         "interpreted_record_count": run_result.interpreted_record_count,
+        "enrichment_failure_count": len(run_result.enrichment_failures),
     }
     sync_stage = {
         "performed": sync_summary is not None,
@@ -176,6 +177,7 @@ def build_run_summary(
         "covered_product_url_count": run_result.covered_product_url_count,
         "raw_record_count": run_result.raw_record_count,
         "interpreted_record_count": run_result.interpreted_record_count,
+        "enrichment_failure_count": len(run_result.enrichment_failures),
         "checksum": run_result.checksum,
         "validation": validation,
         "dry_run": dry_run,
@@ -197,6 +199,7 @@ def export_scrape_artifacts(
     listing_diagnostics: list[dict[str, str]],
     paths: dict[str, Path],
     covered_product_url_count: int,
+    enrichment_failures: list[dict[str, str]] | None = None,
 ) -> tuple[SupplierRunResult, list[dict[str, str]], list[dict[str, str]]]:
     products.sort(key=lambda item: (item.category_path, item.item_name, item.sku or item.canonical_url))
     item_ids = build_item_id_map(products, supplier_slug)
@@ -225,6 +228,7 @@ def export_scrape_artifacts(
         covered_product_url_count=covered_product_url_count,
         raw_record_count=0,
         interpreted_record_count=0,
+        enrichment_failures=enrichment_failures or [],
     ), rows, correction_rows
 
 
@@ -264,6 +268,7 @@ def run_supplier(
         covered_product_url_count = len(products)
         raw_record_count = len(products)
         interpreted_record_count = len(products)
+        enrichment_failures: list[dict[str, str]] = []
     else:
         scrape_result = asyncio.run(
             scrape_supplier(config, force_refresh=force_refresh)
@@ -275,6 +280,7 @@ def run_supplier(
         covered_product_url_count = scrape_result.covered_product_url_count
         raw_record_count = scrape_result.raw_record_count
         interpreted_record_count = scrape_result.interpreted_record_count
+        enrichment_failures = scrape_result.enrichment_failures
 
     run_result, cleaned_rows, correction_rows = export_scrape_artifacts(
         supplier_slug,
@@ -284,6 +290,7 @@ def run_supplier(
         listing_diagnostics,
         paths,
         covered_product_url_count,
+        enrichment_failures,
     )
     run_result.raw_record_count = raw_record_count
     run_result.interpreted_record_count = interpreted_record_count

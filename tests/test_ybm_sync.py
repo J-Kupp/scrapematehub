@@ -207,8 +207,15 @@ class YbmSyncTests(unittest.TestCase):
         config = self.make_config()
         summary, _, _ = sync_rows_to_ybm(config, [self.make_row(item_id="36003522-05X", price="24.95")], dry_run=False)
         self.assertEqual(summary.created_products, 1)
+        self.assertEqual(summary.old_catalog_products, 0)
         self.assertIn("36003522-05X", self.backend.products)
         self.assertEqual(self.backend.products["36003522-05X"]["price"], 2495)
+
+    def test_row_based_sync_counts_existing_catalog_products_by_actual_item_id(self) -> None:
+        config = self.make_config()
+        self.backend.products["SKU-1"] = {"id": "SKU-1", "status": "ACTIVE", "name": "Old item"}
+        summary, _, _ = sync_rows_to_ybm(config, [self.make_row(item_id="SKU-1")], dry_run=True)
+        self.assertEqual(summary.old_catalog_products, 1)
 
     def test_row_based_sync_reuses_existing_category_id_by_name(self) -> None:
         config = self.make_config()

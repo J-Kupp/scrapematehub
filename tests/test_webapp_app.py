@@ -261,6 +261,7 @@ class WebAppAppTests(unittest.TestCase):
                                 "raw_record_count": 473,
                                 "interpreted_record_count": 473,
                                 "failure_count": 3,
+                                "enrichment_failure_count": 2,
                                 "covered_product_url_count": 476,
                                 "discovered_product_url_count": 476,
                             },
@@ -332,6 +333,7 @@ class WebAppAppTests(unittest.TestCase):
                 self.assertIn("470 checked", job_response.text)
                 self.assertIn("470 old in catalog", job_response.text)
                 self.assertIn("11 created", job_response.text)
+                self.assertIn("2 optional enrichments unavailable", job_response.text)
 
     def test_stop_job_route_redirects_after_requesting_stop(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

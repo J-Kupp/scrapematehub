@@ -143,6 +143,7 @@ class WalkerAdapter(SupplierAdapter):
         logger = self.setup_logger()
         self.raw_json_dir.mkdir(parents=True, exist_ok=True)
         failures: list[dict[str, str]] = []
+        enrichment_failures: list[dict[str, str]] = []
         listing_diagnostics: list[dict[str, str]] = []
 
         headers = {
@@ -173,10 +174,11 @@ class WalkerAdapter(SupplierAdapter):
                 if self.max_products > 0:
                     discovered_urls = set(sorted(discovered_urls)[: self.max_products])
 
-                products, raw_record_count, interpreted_record_count = await self._fetch_products(
+                products, raw_record_count, interpreted_record_count, enrichment_failures = await self._fetch_products(
                     sorted(discovered_urls),
                     fetcher,
                     failures,
+                    enrichment_failures,
                     force_refresh=force_refresh,
                 )
             finally:
@@ -196,6 +198,7 @@ class WalkerAdapter(SupplierAdapter):
             covered_product_url_count=len(products),
             raw_record_count=raw_record_count,
             interpreted_record_count=interpreted_record_count,
+            enrichment_failures=enrichment_failures,
         )
 
     async def _discover_product_urls(
@@ -302,9 +305,10 @@ class WalkerAdapter(SupplierAdapter):
         product_urls: list[str],
         fetcher: Fetcher,
         failures: list[dict[str, str]],
+        enrichment_failures: list[dict[str, str]],
         *,
         force_refresh: bool,
-    ) -> tuple[list, int, int]:
+    ) -> tuple[list, int, int, list[dict[str, str]]]:
         semaphore = asyncio.Semaphore(self.detail_concurrency)
 
         total_products = len(product_urls)
@@ -334,7 +338,9 @@ class WalkerAdapter(SupplierAdapter):
                         try:
                             external_html = await fetcher.fetch_text(external_url, force_refresh=force_refresh)
                         except Exception as exc:
-                            failures.append({"stage": "external", "url": external_url, "reason": str(exc)})
+                            enrichment_failures.append(
+                                {"stage": "external", "url": external_url, "reason": str(exc)}
+                            )
                     product = parse_product_record(
                         html,
                         url,
@@ -385,4 +391,12 @@ class WalkerAdapter(SupplierAdapter):
                 continue
             interpreted_record_count += 1
             products.append(result)
-        return products, raw_record_count, interpreted_record_count
+        if enrichment_failures:
+            sample = enrichment_failures[0]
+            fetcher.logger.warning(
+                "Walker optional manufacturer-page enrichment unavailable for %s products; sample=%s (%s)",
+                len(enrichment_failures),
+                sample["url"],
+                sample["reason"],
+            )
+        return products, raw_record_count, interpreted_record_count, enrichment_failures

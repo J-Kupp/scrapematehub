@@ -118,7 +118,8 @@
       <div class="muted tiny">
         {{ scrape_stage.get('raw_record_count', 0) }} raw ·
         {{ scrape_stage.get('interpreted_record_count', 0) }} transformed ·
-        {{ scrape_stage.get('failure_count', 0) }} failures
+        {{ scrape_stage.get('failure_count', 0) }} product failures ·
+        {{ scrape_stage.get('enrichment_failure_count', 0) }} optional enrichments unavailable
       </div>
     </div>
     <div class="panel-flat">
