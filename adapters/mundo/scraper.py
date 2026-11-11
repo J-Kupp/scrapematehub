@@ -23,7 +23,9 @@ from config import get_cache_root, get_log_root
 from core.contracts import SupplierScrapeResult
 
 
-USER_AGENT = "Mozilla/5.0 (compatible; ScrapeMateHub/1.0; +https://yourbarmate.com)"
+# Mundo rejects verbose automation and Chromium user agents, but serves the same
+# public catalogue to a neutral browser-compatible request header.
+USER_AGENT = "Mozilla/5.0"
 REQUEST_TIMEOUT_MS = 60_000
 
 
