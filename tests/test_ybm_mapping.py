@@ -3,6 +3,7 @@ from __future__ import annotations
 import unittest
 
 from models import NormalizedProduct
+from export import record_to_csv_row
 from ybm import build_category_id, build_category_name_map, build_product_id, map_product_to_ybm, map_row_to_ybm
 
 
@@ -20,6 +21,11 @@ class YbmMappingTests(unittest.TestCase):
             min_order_count="1",
             image_url="https://images.example/palmblatt.jpg",
             description="100% biologisch abbaubar.",
+            ingredients="Palmblatt",
+            allergens="nuts, sesame",
+            storage_advice="Trocken lagern.",
+            nutritional_values="pro 100 g; Energie: 42 kJ",
+            dietary_labels="vegan",
             manufacturer="Swiss Supplier",
             brand="Swissbox",
             country="CH",
@@ -56,6 +62,17 @@ class YbmMappingTests(unittest.TestCase):
         self.assertEqual(payload["bundles"][0]["type"], "PK")
         self.assertEqual(payload["custom_properties"]["country"], "CH")
         self.assertEqual(payload["custom_properties"]["labels"], ["BIO", "DISCOUNTED"])
+        self.assertEqual(payload["custom_properties"]["ingredients"], "Palmblatt")
+        self.assertEqual(payload["custom_properties"]["allergens"], ["nuts", "sesame"])
+        self.assertEqual(payload["custom_properties"]["storage_advice"], "Trocken lagern.")
+
+    def test_export_includes_supplier_detail_fields(self) -> None:
+        row = record_to_csv_row(self.make_product(), "swissbox__sku-001")
+        self.assertEqual(row["Ingredients"], "Palmblatt")
+        self.assertEqual(row["Allergens"], "nuts, sesame")
+        self.assertEqual(row["Storage advice"], "Trocken lagern.")
+        self.assertEqual(row["Nutritional values"], "pro 100 g; Energie: 42 kJ")
+        self.assertEqual(row["Dietary labels"], "vegan")
 
     def test_category_name_map_shortens_long_paths(self) -> None:
         mapping = build_category_name_map(

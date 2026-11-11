@@ -8,6 +8,7 @@ ADAPTER_REGISTRY = {
     "fideco": "adapters.fideco:FidecoAdapter",
     "gourmador": "adapters.gourmador:GourmadorAdapter",
     "laenggasstee": "adapters.laenggasstee:LaenggassTeeAdapter",
+    "mundo": "adapters.mundo:MundoAdapter",
     "swissbox": "adapters.swissbox:SwissboxAdapter",
     "terravigna": "adapters.terravigna:TerraVignaAdapter",
     "walker": "adapters.walker:WalkerAdapter",

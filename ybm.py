@@ -304,10 +304,10 @@ def build_custom_properties(product: NormalizedProduct) -> dict[str, Any]:
         "brand": product.brand,
         "region": product.region,
         "description": product.description,
-        "ingredients": "",
-        "allergens": [],
+        "ingredients": product.ingredients,
+        "allergens": [item.strip() for item in product.allergens.split(",") if item.strip()],
         "color": product.color,
-        "storage_advice": "",
+        "storage_advice": product.storage_advice,
         "labels": sorted(label for label in product.labels if label in ALLOWED_LABELS),
     }
     country = product.country.strip().upper()
