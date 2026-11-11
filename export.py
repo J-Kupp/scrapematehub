@@ -49,10 +49,15 @@ def record_to_csv_row(record: NormalizedProduct, item_id: str) -> dict[str, str]
     row["GTIN"] = record.gtin
     row["Labels"] = ",".join(record.labels)
     row["Description"] = record.description
+    row["Ingredients"] = record.ingredients
+    row["Allergens"] = record.allergens
     row["Manufacturer"] = record.manufacturer
     row["Brand"] = record.brand
     row["Region"] = record.region
     row["Country"] = record.country
+    row["Nutritional values"] = record.nutritional_values
+    row["Dietary labels"] = record.dietary_labels
+    row["Storage advice"] = record.storage_advice
     row["Color"] = record.color
     row["Material"] = record.material
     row["Length"] = record.length
