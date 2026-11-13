@@ -879,6 +879,23 @@ def interpret_products(records: list[NormalizedProduct], item_ids: dict[str, str
     for record, record_key in zip(records, record_keys):
         before = deepcopy(record)
         decision = interpret_packaging(record)
+        if decision.mode == "suspected_contaminated_bundle":
+            # Keep the article importable when supplier packaging text mixes counts,
+            # dimensions, or incompatible units. The original text remains in the
+            # audit trail for a later supplier-specific improvement.
+            decision = build_decision(
+                record,
+                vessel_size="1",
+                vessel_unit="quantity",
+                vessel_type="",
+                bundle_size="",
+                bundle_type="",
+                price=record.price,
+                mode="fallback_quantity_for_ambiguous_packaging",
+                evidence=decision.evidence,
+                source=decision.source,
+                issue=decision.issue,
+            )
         apply_decision(record, decision)
         if (
             before.vessel_size != record.vessel_size

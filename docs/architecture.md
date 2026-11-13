@@ -57,6 +57,11 @@ Rounding is half-up. A positive value that would round to zero is raised to the 
 size for its unit. `cleaner.py` applies this rule and `validate.py` rejects rows that do not meet
 it, so only valid vessel payloads reach `ybm.py`.
 
+When the shared packaging interpreter detects a contradictory or contaminated packaging string,
+it uses the safe import fallback `1 quantity` without a bundle instead of blocking otherwise valid
+products. The original text and fallback decision remain in the packaging audit. Empty discovery,
+duplicate item IDs, and invalid API payloads remain blocking validation errors.
+
 ## Job Modes And Data Flow
 
 - **Scrape**: discover URLs, fetch detail pages, transform records, and write local export artifacts.

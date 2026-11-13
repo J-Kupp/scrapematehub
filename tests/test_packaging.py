@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 
 from models import NormalizedProduct
-from packaging import interpret_packaging
+from packaging import interpret_packaging, interpret_products
 
 
 class PackagingTests(unittest.TestCase):
@@ -148,6 +148,23 @@ class PackagingTests(unittest.TestCase):
         )
         decision = interpret_packaging(product)
         self.assertEqual(decision.mode, "suspected_contaminated_bundle")
+
+    def test_ambiguous_packaging_falls_back_to_one_quantity_for_import(self) -> None:
+        product = self.make_product(
+            sku="V35873",
+            item_name="Handbürste",
+            raw_detail_price_unit_text="12 Flaschen / Karton",
+            raw_spec_piece_text="1 Stk.",
+        )
+
+        audit_rows = interpret_products([product], {"sku:V35873": "V35873"}, ["sku:V35873"])
+
+        self.assertEqual(product.vessel_size, "1")
+        self.assertEqual(product.vessel_unit, "quantity")
+        self.assertEqual(product.bundle_size, "")
+        self.assertEqual(product.packaging_mode, "fallback_quantity_for_ambiguous_packaging")
+        self.assertEqual(len(audit_rows), 1)
+        self.assertEqual(audit_rows[0]["Evidence text"], "12 Flaschen / Karton")
 
     def test_prefers_piece_spec_over_pack_alias_in_detail_block(self) -> None:
         product = self.make_product(
