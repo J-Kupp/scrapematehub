@@ -6,20 +6,36 @@
   "status": "active",
   "categories": [
     {
+      "code": "pim_merat_marketing_ham_and_bacon",
       "name": "Schinken & Speck",
-      "level": 2
+      "slug": "schinken-speck",
+      "level": 2,
+      "productPosition": 1677784876,
+      "categoryPosition": 2
     },
     {
+      "code": "pim_merat_marketing_porc",
       "name": "Schwein",
-      "level": 1
+      "slug": "schwein",
+      "level": 1,
+      "productPosition": 1677784876,
+      "categoryPosition": 4
     },
     {
+      "code": "pim_merat_marketing_charcuterie",
       "name": "Charcuterie & Wurstwaren",
-      "level": 1
+      "slug": "charcuterie-wurstwaren",
+      "level": 1,
+      "productPosition": 1677784876,
+      "categoryPosition": 8
     },
     {
+      "code": "pim_merat_marketing_meat",
       "name": "Fleisch",
-      "level": 0
+      "slug": "fleisch",
+      "level": 0,
+      "productPosition": 1677784876,
+      "categoryPosition": 0
     }
   ],
   "master": {
@@ -56,8 +72,30 @@
       }
     ],
     "price": null,
+    "assets": [
+      {
+        "name": "5b69a70ddc8ff9a50bab1d7727cca6b8579dbcf8_184103046700.jpg",
+        "source": "https://shop.merat-tipesca.ch/files/akeneo-assets/5/b/6/9/5b69a70ddc8ff9a50bab1d7727cca6b8579dbcf8_184103046700.jpg",
+        "title": "Hauptbild (Mérat)",
+        "caption": null,
+        "set": "merat_image_main",
+        "size": null
+      },
+      {
+        "name": "184103046700_Bratspeck oSchw oKnor geräucht gesch 400g_DE.pdf",
+        "source": "https://shop.merat-tipesca.ch/documents/01K482SSPCW4WJ9FQMWA4WPHK9",
+        "title": "Produktdatenblatt",
+        "caption": null,
+        "set": "product_fact_sheet_merat",
+        "size": null
+      }
+    ],
     "images": [
       {
+        "name": "798cf21c6add9607b070251e3ef674def1666c75.jpg",
+        "title": null,
+        "caption": null,
+        "set": "merat_image_main",
         "sources": [
           {
             "size": "full",
@@ -66,6 +104,14 @@
           {
             "size": "large",
             "url": "https://swissgastrosolutions.rokka.io/large/798cf21c6add9607b070251e3ef674def1666c75.jpg"
+          },
+          {
+            "size": "medium",
+            "url": "https://swissgastrosolutions.rokka.io/medium/798cf21c6add9607b070251e3ef674def1666c75.jpg"
+          },
+          {
+            "size": "small",
+            "url": "https://swissgastrosolutions.rokka.io/small/798cf21c6add9607b070251e3ef674def1666c75.jpg"
           }
         ]
       }
@@ -76,70 +122,378 @@
         "value": "7617100579874",
         "values": [
           "7617100579874"
-        ]
+        ],
+        "valueCode": "7617100579874",
+        "display": "product",
+        "group": {
+          "name": "codes",
+          "label": "Codes",
+          "position": 5
+        }
       },
       "country_of_origin": {
         "label": "Produktionsland",
         "value": "Schweiz",
         "values": [
           "Schweiz"
-        ]
+        ],
+        "valueCode": "CH",
+        "display": "product",
+        "group": {
+          "name": "origin",
+          "label": "Herkunft / Produktion",
+          "position": 10
+        }
       },
       "fishing_zone": {
         "label": "Herkunft",
         "value": "Schweiz",
         "values": [
           "Schweiz"
-        ]
+        ],
+        "valueCode": "CH",
+        "display": "product",
+        "group": {
+          "name": "origin",
+          "label": "Herkunft / Produktion",
+          "position": 10
+        }
       },
       "storage_advice_s1": {
         "label": "Lagerung",
         "value": "< 5 Grad",
         "values": [
           "< 5 Grad"
-        ]
+        ],
+        "valueCode": "05",
+        "display": "product",
+        "group": {
+          "name": "storage",
+          "label": "Lagerung / Haltbarkeit",
+          "position": 15
+        }
       },
       "ehs_storage_advice": {
         "label": "Lagerhinweis",
         "value": " Gekühlt aufbewahren! Max. + 5°C",
         "values": [
           " Gekühlt aufbewahren! Max. + 5°C"
-        ]
+        ],
+        "valueCode": null,
+        "display": "product",
+        "group": {
+          "name": "storage",
+          "label": "Lagerung / Haltbarkeit",
+          "position": 15
+        }
       },
       "ehs_ingredients": {
         "label": "Zutaten",
         "value": " Schweinefleisch (Schweiz), Nitritpökelsalz (jodiertes Kochsalz, Konservierungsstoff: Natriumnitrit), Glucose, Glucosesirup, Antioxidationsmittel: Natriumascorbat, Natriumcitrat.",
         "values": [
           " Schweinefleisch (Schweiz), Nitritpökelsalz (jodiertes Kochsalz, Konservierungsstoff: Natriumnitrit), Glucose, Glucosesirup, Antioxidationsmittel: Natriumascorbat, Natriumcitrat."
-        ]
+        ],
+        "valueCode": null,
+        "display": "product",
+        "group": {
+          "name": "ingredients",
+          "label": "Zutaten",
+          "position": 20
+        }
       },
       "labels": {
         "label": "Zertifizierung",
         "value": "Schweizer Fleisch",
         "values": [
           "Schweizer Fleisch"
-        ]
+        ],
+        "valueCode": "ch_meat",
+        "display": "product",
+        "group": {
+          "name": "labels",
+          "label": "Zertifizierung",
+          "position": 30
+        }
       },
       "contains_allergenes": {
         "label": "Allergene",
         "value": "keine",
         "values": [
           "keine"
-        ]
+        ],
+        "valueCode": "none",
+        "display": "product",
+        "group": {
+          "name": "allergens",
+          "label": "Allergene",
+          "position": 40
+        }
       },
       "ehs_nutrient_energy": {
         "label": "Energie",
         "value": "1482 kJ / 358 kcal",
         "values": [
           "1482 kJ / 358 kcal"
-        ]
+        ],
+        "valueCode": "1482 kJ / 358 kcal",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
       },
       "ehs_nutrient_fat": {
         "label": "Fett",
         "value": "32.0 g",
         "values": [
           "32.0 g"
-        ]
+        ],
+        "valueCode": "32.0 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_fatty_acids_saturated": {
+        "label": "... davon gesättigte Fettsäuren",
+        "value": "12.0 g",
+        "values": [
+          "12.0 g"
+        ],
+        "valueCode": "12.0 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_carbohydrates": {
+        "label": "Kohlenhydrate",
+        "value": "0.5 g",
+        "values": [
+          "0.5 g"
+        ],
+        "valueCode": "0.5 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_sugar": {
+        "label": "... davon Zucker",
+        "value": "< 0.1 g",
+        "values": [
+          "< 0.1 g"
+        ],
+        "valueCode": "< 0.1 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_fiber": {
+        "label": "Ballaststoffe",
+        "value": "< 0.1 g",
+        "values": [
+          "< 0.1 g"
+        ],
+        "valueCode": "< 0.1 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_protein": {
+        "label": "Eiweiss",
+        "value": "17.0 g",
+        "values": [
+          "17.0 g"
+        ],
+        "valueCode": "17.0 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_salt": {
+        "label": "Salz",
+        "value": "2.5 g",
+        "values": [
+          "2.5 g"
+        ],
+        "valueCode": "2.5 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_sodium": {
+        "label": "Natrium",
+        "value": "1.0 g",
+        "values": [
+          "1.0 g"
+        ],
+        "valueCode": "1.0 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_per": {
+        "label": "ehs_nutrient_per",
+        "value": "100 g",
+        "values": [
+          "100 g"
+        ],
+        "valueCode": "100 g",
+        "display": "none",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "base_unit_gtin": {
+        "label": "base_unit_gtin",
+        "value": "7617100075406",
+        "values": [
+          "7617100075406"
+        ],
+        "valueCode": "7617100075406",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      },
+      "pk_name_fr": {
+        "label": "pk_name_fr",
+        "value": "Lard grill s/cn s/crt fumé cpé 400g",
+        "values": [
+          "Lard grill s/cn s/crt fumé cpé 400g"
+        ],
+        "valueCode": "Lard grill s/cn s/crt fumé cpé 400g",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      },
+      "gtin_SCH": {
+        "label": "gtin_SCH",
+        "value": "7617100579874",
+        "values": [
+          "7617100579874"
+        ],
+        "valueCode": "7617100579874",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      },
+      "gtin_CS": {
+        "label": "gtin_CS",
+        "value": "7617100579874",
+        "values": [
+          "7617100579874"
+        ],
+        "valueCode": "7617100579874",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      },
+      "pk_name_en": {
+        "label": "pk_name_en",
+        "value": "Bacon f/fry r-o w/oCa smo slic 400g",
+        "values": [
+          "Bacon f/fry r-o w/oCa smo slic 400g"
+        ],
+        "valueCode": "Bacon f/fry r-o w/oCa smo slic 400g",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      },
+      "gtin_PCE": {
+        "label": "gtin_PCE",
+        "value": "7617100075406",
+        "values": [
+          "7617100075406"
+        ],
+        "valueCode": "7617100075406",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      },
+      "pk_name_de": {
+        "label": "pk_name_de",
+        "value": "Bratspeck o/Schw o/Kn ger gesc 400g",
+        "values": [
+          "Bratspeck o/Schw o/Kn ger gesc 400g"
+        ],
+        "valueCode": "Bratspeck o/Schw o/Kn ger gesc 400g",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      },
+      "gtin_KGM": {
+        "label": "gtin_KGM",
+        "value": "7617100075406",
+        "values": [
+          "7617100075406"
+        ],
+        "valueCode": "7617100075406",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      },
+      "pk_name_it": {
+        "label": "pk_name_it",
+        "value": "Pancetta arro s/co s/ca affu affe 400g",
+        "values": [
+          "Pancetta arro s/co s/ca affu affe 400g"
+        ],
+        "valueCode": "Pancetta arro s/co s/ca affu affe 400g",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
       }
     }
   }

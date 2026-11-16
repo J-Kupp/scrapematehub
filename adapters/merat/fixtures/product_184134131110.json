@@ -6,12 +6,20 @@
   "status": "active",
   "categories": [
     {
+      "code": "pim_merat_marketing_porc",
       "name": "Schwein",
-      "level": 1
+      "slug": "schwein",
+      "level": 1,
+      "productPosition": -768664090,
+      "categoryPosition": 4
     },
     {
+      "code": "pim_merat_marketing_meat",
       "name": "Fleisch",
-      "level": 0
+      "slug": "fleisch",
+      "level": 0,
+      "productPosition": -768664090,
+      "categoryPosition": 0
     }
   ],
   "master": {
@@ -48,8 +56,30 @@
       }
     ],
     "price": null,
+    "assets": [
+      {
+        "name": "7fee855f84f70851a03b257b8113c38d36f64e74_184134131110.jpg",
+        "source": "https://shop.merat-tipesca.ch/files/akeneo-assets/7/f/e/e/7fee855f84f70851a03b257b8113c38d36f64e74_184134131110.jpg",
+        "title": "Hauptbild (Mérat)",
+        "caption": null,
+        "set": "merat_image_main",
+        "size": null
+      },
+      {
+        "name": "184134131110_Schwein Nierstück lang ca3.2kg_DE.pdf",
+        "source": "https://shop.merat-tipesca.ch/documents/01K48CJMNDP9ZC4PK2A61Z9D0K",
+        "title": "Produktdatenblatt",
+        "caption": null,
+        "set": "product_fact_sheet_merat",
+        "size": null
+      }
+    ],
     "images": [
       {
+        "name": "f2712fee97554e52bc3e722f183f0914f47dc625.jpg",
+        "title": null,
+        "caption": null,
+        "set": "merat_image_main",
         "sources": [
           {
             "size": "full",
@@ -58,6 +88,14 @@
           {
             "size": "large",
             "url": "https://swissgastrosolutions.rokka.io/large/f2712fee97554e52bc3e722f183f0914f47dc625.jpg"
+          },
+          {
+            "size": "medium",
+            "url": "https://swissgastrosolutions.rokka.io/medium/f2712fee97554e52bc3e722f183f0914f47dc625.jpg"
+          },
+          {
+            "size": "small",
+            "url": "https://swissgastrosolutions.rokka.io/small/f2712fee97554e52bc3e722f183f0914f47dc625.jpg"
           }
         ]
       }
@@ -68,42 +106,84 @@
         "value": "7617100584656",
         "values": [
           "7617100584656"
-        ]
+        ],
+        "valueCode": "7617100584656",
+        "display": "product",
+        "group": {
+          "name": "codes",
+          "label": "Codes",
+          "position": 5
+        }
       },
       "country_of_origin": {
         "label": "Produktionsland",
         "value": "Schweiz",
         "values": [
           "Schweiz"
-        ]
+        ],
+        "valueCode": "CH",
+        "display": "product",
+        "group": {
+          "name": "origin",
+          "label": "Herkunft / Produktion",
+          "position": 10
+        }
       },
       "fishing_zone": {
         "label": "Herkunft",
         "value": "Schweiz",
         "values": [
           "Schweiz"
-        ]
+        ],
+        "valueCode": "CH",
+        "display": "product",
+        "group": {
+          "name": "origin",
+          "label": "Herkunft / Produktion",
+          "position": 10
+        }
       },
       "storage_advice_s1": {
         "label": "Lagerung",
         "value": "< 5 Grad",
         "values": [
           "< 5 Grad"
-        ]
+        ],
+        "valueCode": "05",
+        "display": "product",
+        "group": {
+          "name": "storage",
+          "label": "Lagerung / Haltbarkeit",
+          "position": 15
+        }
       },
       "ehs_storage_advice": {
         "label": "Lagerhinweis",
         "value": " Gekühlt aufbewahren! Max. + 5°C",
         "values": [
           " Gekühlt aufbewahren! Max. + 5°C"
-        ]
+        ],
+        "valueCode": null,
+        "display": "product",
+        "group": {
+          "name": "storage",
+          "label": "Lagerung / Haltbarkeit",
+          "position": 15
+        }
       },
       "ehs_ingredients": {
         "label": "Zutaten",
         "value": " Schweinefleisch (Schweiz).",
         "values": [
           " Schweinefleisch (Schweiz)."
-        ]
+        ],
+        "valueCode": null,
+        "display": "product",
+        "group": {
+          "name": "ingredients",
+          "label": "Zutaten",
+          "position": 20
+        }
       },
       "labels": {
         "label": "Zertifizierung",
@@ -111,28 +191,280 @@
         "values": [
           "Schweizer Fleisch",
           "Suisse Garantie"
-        ]
+        ],
+        "valueCode": "ch_meat, LAB_506",
+        "display": "product",
+        "group": {
+          "name": "labels",
+          "label": "Zertifizierung",
+          "position": 30
+        }
       },
       "contains_allergenes": {
         "label": "Allergene",
         "value": "keine",
         "values": [
           "keine"
-        ]
+        ],
+        "valueCode": "none",
+        "display": "product",
+        "group": {
+          "name": "allergens",
+          "label": "Allergene",
+          "position": 40
+        }
       },
       "ehs_nutrient_energy": {
         "label": "Energie",
         "value": "559 kJ / 133 kcal",
         "values": [
           "559 kJ / 133 kcal"
-        ]
+        ],
+        "valueCode": "559 kJ / 133 kcal",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
       },
       "ehs_nutrient_fat": {
         "label": "Fett",
         "value": "5.0 g",
         "values": [
           "5.0 g"
-        ]
+        ],
+        "valueCode": "5.0 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_fatty_acids_saturated": {
+        "label": "... davon gesättigte Fettsäuren",
+        "value": "2.0 g",
+        "values": [
+          "2.0 g"
+        ],
+        "valueCode": "2.0 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_carbohydrates": {
+        "label": "Kohlenhydrate",
+        "value": "0.0 g",
+        "values": [
+          "0.0 g"
+        ],
+        "valueCode": "0.0 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_sugar": {
+        "label": "... davon Zucker",
+        "value": "0.0 g",
+        "values": [
+          "0.0 g"
+        ],
+        "valueCode": "0.0 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_fiber": {
+        "label": "Ballaststoffe",
+        "value": "0.0 g",
+        "values": [
+          "0.0 g"
+        ],
+        "valueCode": "0.0 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_protein": {
+        "label": "Eiweiss",
+        "value": "21.5 g",
+        "values": [
+          "21.5 g"
+        ],
+        "valueCode": "21.5 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_salt": {
+        "label": "Salz",
+        "value": "0.1 g",
+        "values": [
+          "0.1 g"
+        ],
+        "valueCode": "0.1 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_sodium": {
+        "label": "Natrium",
+        "value": "0.0 g",
+        "values": [
+          "0.0 g"
+        ],
+        "valueCode": "0.0 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_per": {
+        "label": "ehs_nutrient_per",
+        "value": "100 g",
+        "values": [
+          "100 g"
+        ],
+        "valueCode": "100 g",
+        "display": "none",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "base_unit_gtin": {
+        "label": "base_unit_gtin",
+        "value": "7617100080189",
+        "values": [
+          "7617100080189"
+        ],
+        "valueCode": "7617100080189",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      },
+      "pk_name_fr": {
+        "label": "pk_name_fr",
+        "value": "P-Filet long env3.2kg",
+        "values": [
+          "P-Filet long env3.2kg"
+        ],
+        "valueCode": "P-Filet long env3.2kg",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      },
+      "gtin_CS": {
+        "label": "gtin_CS",
+        "value": "7617100584656",
+        "values": [
+          "7617100584656"
+        ],
+        "valueCode": "7617100584656",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      },
+      "pk_name_en": {
+        "label": "pk_name_en",
+        "value": "P-Loin long bone-o rind-off ca3.2kg",
+        "values": [
+          "P-Loin long bone-o rind-off ca3.2kg"
+        ],
+        "valueCode": "P-Loin long bone-o rind-off ca3.2kg",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      },
+      "gtin_PCE": {
+        "label": "gtin_PCE",
+        "value": "7617100080189",
+        "values": [
+          "7617100080189"
+        ],
+        "valueCode": "7617100080189",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      },
+      "pk_name_de": {
+        "label": "pk_name_de",
+        "value": "S-Nierstück lang ca3.2kg",
+        "values": [
+          "S-Nierstück lang ca3.2kg"
+        ],
+        "valueCode": "S-Nierstück lang ca3.2kg",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      },
+      "gtin_KGM": {
+        "label": "gtin_KGM",
+        "value": "7617100080189",
+        "values": [
+          "7617100080189"
+        ],
+        "valueCode": "7617100080189",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      },
+      "pk_name_it": {
+        "label": "pk_name_it",
+        "value": "Ma-Lonza lunga ca3.2kg",
+        "values": [
+          "Ma-Lonza lunga ca3.2kg"
+        ],
+        "valueCode": "Ma-Lonza lunga ca3.2kg",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
       }
     }
   }

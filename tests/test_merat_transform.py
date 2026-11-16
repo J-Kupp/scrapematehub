@@ -43,7 +43,7 @@ class MeratTransformTests(unittest.TestCase):
         self.assertEqual(product.vessel_unit, "kg")
         self.assertEqual(product.net_weight, "3.2")
         self.assertEqual(product.gtin, "7617100584656")
-        self.assertEqual(product.country, "Schweiz")
+        self.assertEqual(product.country, "CH")
         self.assertIn("Schwein", product.category_path)
         self.assertTrue(product.image_url.startswith("https://"))
 
@@ -59,6 +59,52 @@ class MeratTransformTests(unittest.TestCase):
 
     def test_incomplete_detail_record_is_skipped(self) -> None:
         self.assertIsNone(parse_product_record({"itemNumber": "123"}, BASE_URL))
+
+
+class MeratDetailPipelineTests(unittest.TestCase):
+    def pipeline(self, sku):
+        from packaging import interpret_products
+        from export import build_csv_rows, record_key
+        from cleaner import clean_rows
+        product = parse_product_record(load_fixture(f"product_{sku}.json"), BASE_URL)
+        interpret_products([product], {record_key(product): sku}, [record_key(product)])
+        rows, _ = clean_rows(build_csv_rows([product], "merat"), structured_item_ids={sku})
+        return product, rows[0]
+
+    def test_count_bundle_preserves_inner_weight_and_both_gtins_through_cleaning(self):
+        product, row = self.pipeline("184113614060")
+        self.assertEqual(row["Vessel size"], "0.06")
+        self.assertEqual(row["Vessel unit"], "kg")
+        self.assertEqual(row["Bundle size"], "14")
+        self.assertEqual(row["Bundle type"], "CT")
+        self.assertTrue(row["GTIN"])
+        self.assertTrue(row["Bundle GTIN"])
+        self.assertNotEqual(row["GTIN"], row["Bundle GTIN"])
+
+    def test_optional_details_survive_export_and_sync_description(self):
+        product, row = self.pipeline("184134131110")
+        self.assertIn("pro 100 g", row["Nutritional values"])
+        self.assertIn("559 kJ", row["Nutritional values"])
+        self.assertTrue(row["Product Sheet"].startswith("https://"))
+        self.assertTrue(all(row[key] for key in ["Name FR", "Name IT", "Name EN"]))
+        self.assertEqual(row["Dietary labels"], "")
+        self.assertIn("Suisse Garantie", row["Description"])
+        self.assertIn(row["Product Sheet"], row["Description"])
+        self.assertIn(row["Nutritional values"], row["Description"])
+        self.assertEqual(row["Country"], "CH")
+        from ybm import map_row_to_ybm
+        payload = map_row_to_ybm(row, "merat")
+        self.assertIn(row["Product Sheet"], payload["custom_properties"]["description"])
+        self.assertIn(row["Nutritional values"], payload["custom_properties"]["description"])
+
+    def test_fish_production_method_is_retained(self):
+        product, row = self.pipeline("184191002660")
+        self.assertIn("Wildfang", row["Description"])
+
+    def test_trace_allergens_stay_distinct_from_declared_allergens(self):
+        product, row = self.pipeline("184193250160")
+        self.assertIn("Spurenhinweis: Sojabohnen, Hartschalenobst", row["Description"])
+
 
 
 class MeratPaginationTests(unittest.IsolatedAsyncioTestCase):

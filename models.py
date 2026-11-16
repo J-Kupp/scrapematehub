@@ -66,6 +66,10 @@ class NormalizedProduct:
     sku: str = ""
     variant_name: str = ""
     variant_options: dict[str, str] = field(default_factory=dict)
+    name_fr: str = ""
+    name_it: str = ""
+    name_en: str = ""
+    fishing_method: str = ""
     gtin: str = ""
     bundle_gtin: str = ""
     price: str = ""

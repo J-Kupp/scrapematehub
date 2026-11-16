@@ -1,0 +1,547 @@
+{
+  "itemNumber": "184191002660",
+  "name": "MSC Fischstäbchen FAO67 TK",
+  "description": null,
+  "shortDescription": null,
+  "status": "active",
+  "categories": [
+    {
+      "code": "pim_merat_marketing_msc",
+      "name": "MSC",
+      "slug": "msc",
+      "level": 2,
+      "productPosition": -1595612678,
+      "categoryPosition": 4
+    },
+    {
+      "code": "pim_merat_marketing_frozen_convenience",
+      "name": "Convenience",
+      "slug": "convenience",
+      "level": 2,
+      "productPosition": -1595612678,
+      "categoryPosition": 4
+    },
+    {
+      "code": "pim_merat_marketing_frozen",
+      "name": "Tiefgekühlt",
+      "slug": "tiefgekuhlt",
+      "level": 1,
+      "productPosition": -1595612678,
+      "categoryPosition": 1
+    },
+    {
+      "code": "pim_merat_marketing_animal_friendly",
+      "name": "Tierfreundlich",
+      "slug": "tierfreundlich",
+      "level": 1,
+      "productPosition": -1595612678,
+      "categoryPosition": 0
+    },
+    {
+      "code": "pim_merat_marketing_convenience_and_efficiency",
+      "name": "Convenience & Effizienz",
+      "slug": "convenience-effizienz",
+      "level": 1,
+      "productPosition": -1595612678,
+      "categoryPosition": 1
+    },
+    {
+      "code": "pim_merat_marketing_fish_and_seafood",
+      "name": "Fisch & Seafood",
+      "slug": "fisch-seafood",
+      "level": 0,
+      "productPosition": -1595612678,
+      "categoryPosition": 1
+    },
+    {
+      "code": "pim_merat_marketing_our_highlights",
+      "name": "Unsere Highlights",
+      "slug": "unsere-highlights",
+      "level": 0,
+      "productPosition": -1595612678,
+      "categoryPosition": 7
+    },
+    {
+      "code": "pim_merat_marketing_conscious_enjoyment",
+      "name": "Nachhaltig & gesund",
+      "slug": "nachhaltig-gesund",
+      "level": 0,
+      "productPosition": -1595612678,
+      "categoryPosition": 3
+    }
+  ],
+  "master": {
+    "sku": "184191002660",
+    "name": "MSC Fischstäbchen FAO67 TK",
+    "baseOrderingUnit": "CT",
+    "baseUnit": "KGM",
+    "units": [
+      {
+        "unit": "kg",
+        "unitCode": "KGM",
+        "minimumQuantity": "1",
+        "quantityIncrement": null,
+        "grossWeightKg": "1",
+        "netWeightKg": "1",
+        "netDrainedWeightKg": null,
+        "bundleUnit": null,
+        "price": null
+      },
+      {
+        "unit": "Karton",
+        "unitCode": "CT",
+        "minimumQuantity": "1",
+        "quantityIncrement": null,
+        "grossWeightKg": "5",
+        "netWeightKg": "5",
+        "netDrainedWeightKg": null,
+        "bundleUnit": {
+          "unit": "kg",
+          "unitCode": "KGM",
+          "quantity": "5"
+        },
+        "price": null
+      }
+    ],
+    "price": null,
+    "assets": [
+      {
+        "name": "6be33efa1f20a88f6f968136c1360acf42bf9ab0_184191002660.jpg",
+        "source": "https://shop.merat-tipesca.ch/files/akeneo-assets/6/b/e/3/6be33efa1f20a88f6f968136c1360acf42bf9ab0_184191002660.jpg",
+        "title": "Hauptbild (Mérat)",
+        "caption": null,
+        "set": "merat_image_main",
+        "size": null
+      },
+      {
+        "name": "184191002660_MSC Fischstäbchen FAO67 TK_DE.pdf",
+        "source": "https://shop.merat-tipesca.ch/documents/01K4Q8WB76P9D4ZX40JDCBHRAE",
+        "title": "Produktdatenblatt",
+        "caption": null,
+        "set": "product_fact_sheet_merat",
+        "size": null
+      }
+    ],
+    "images": [
+      {
+        "name": "b1505d96a201e3e0185bc09eb99f609e3dab09d3.jpg",
+        "title": null,
+        "caption": null,
+        "set": "merat_image_main",
+        "sources": [
+          {
+            "size": "full",
+            "url": "https://swissgastrosolutions.rokka.io/full/b1505d96a201e3e0185bc09eb99f609e3dab09d3.jpg"
+          },
+          {
+            "size": "large",
+            "url": "https://swissgastrosolutions.rokka.io/large/b1505d96a201e3e0185bc09eb99f609e3dab09d3.jpg"
+          },
+          {
+            "size": "medium",
+            "url": "https://swissgastrosolutions.rokka.io/medium/b1505d96a201e3e0185bc09eb99f609e3dab09d3.jpg"
+          },
+          {
+            "size": "small",
+            "url": "https://swissgastrosolutions.rokka.io/small/b1505d96a201e3e0185bc09eb99f609e3dab09d3.jpg"
+          }
+        ]
+      }
+    ],
+    "attributes": {
+      "selling_unit_1_gtin": {
+        "label": "GTIN",
+        "value": "7612067530944",
+        "values": [
+          "7612067530944"
+        ],
+        "valueCode": "7612067530944",
+        "display": "product",
+        "group": {
+          "name": "codes",
+          "label": "Codes",
+          "position": 5
+        }
+      },
+      "country_of_origin": {
+        "label": "Produktionsland",
+        "value": "Deutschland",
+        "values": [
+          "Deutschland"
+        ],
+        "valueCode": "DE",
+        "display": "product",
+        "group": {
+          "name": "origin",
+          "label": "Herkunft / Produktion",
+          "position": 10
+        }
+      },
+      "fishing_zone": {
+        "label": "Herkunft",
+        "value": "FAO 67, Nordost Pazifik",
+        "values": [
+          "FAO 67, Nordost Pazifik"
+        ],
+        "valueCode": "67",
+        "display": "product",
+        "group": {
+          "name": "origin",
+          "label": "Herkunft / Produktion",
+          "position": 10
+        }
+      },
+      "production_method": {
+        "label": "Produktionsverfahren",
+        "value": "Wildfang",
+        "values": [
+          "Wildfang"
+        ],
+        "valueCode": "MARINE_FISHERY",
+        "display": "product",
+        "group": {
+          "name": "origin",
+          "label": "Herkunft / Produktion",
+          "position": 10
+        }
+      },
+      "storage_advice_s1": {
+        "label": "Lagerung",
+        "value": "< -18 Grad",
+        "values": [
+          "< -18 Grad"
+        ],
+        "valueCode": "06",
+        "display": "product",
+        "group": {
+          "name": "storage",
+          "label": "Lagerung / Haltbarkeit",
+          "position": 15
+        }
+      },
+      "ehs_storage_advice": {
+        "label": "Lagerhinweis",
+        "value": " Tiefgekühlt: Nur im Tiefkühlabteil bei mind. -18 °C lagerfähig. Einmal aufgetaut, nicht wieder einfrieren und sofort konsumieren.",
+        "values": [
+          " Tiefgekühlt: Nur im Tiefkühlabteil bei mind. -18 °C lagerfähig. Einmal aufgetaut, nicht wieder einfrieren und sofort konsumieren."
+        ],
+        "valueCode": null,
+        "display": "product",
+        "group": {
+          "name": "storage",
+          "label": "Lagerung / Haltbarkeit",
+          "position": 15
+        }
+      },
+      "ehs_ingredients": {
+        "label": "Zutaten",
+        "value": " <b>Alaska-Seelachs (Theragra chalcogramma)</b> 65% (Wildfang, Schleppnetze, FAO 61 Nordwestpazifik, FAO 67 Nordostpazifik), <b>Weizen</b>mehl, Sonnenblumenöl, Kartoffelstärke, Wasser, Kochsalz, Hefe, Gewürze.",
+        "values": [
+          " <b>Alaska-Seelachs (Theragra chalcogramma)</b> 65% (Wildfang, Schleppnetze, FAO 61 Nordwestpazifik, FAO 67 Nordostpazifik), <b>Weizen</b>mehl, Sonnenblumenöl, Kartoffelstärke, Wasser, Kochsalz, Hefe, Gewürze."
+        ],
+        "valueCode": null,
+        "display": "product",
+        "group": {
+          "name": "ingredients",
+          "label": "Zutaten",
+          "position": 20
+        }
+      },
+      "labels": {
+        "label": "Zertifizierung",
+        "value": "MSC (Marine Stewardship Council)",
+        "values": [
+          "MSC (Marine Stewardship Council)"
+        ],
+        "valueCode": "LAB_306",
+        "display": "product",
+        "group": {
+          "name": "labels",
+          "label": "Zertifizierung",
+          "position": 30
+        }
+      },
+      "contains_allergenes": {
+        "label": "Allergene",
+        "value": "Fische, Glutenhaltige Getreide",
+        "values": [
+          "Fische",
+          "Glutenhaltige Getreide"
+        ],
+        "valueCode": "fish, gluten",
+        "display": "product",
+        "group": {
+          "name": "allergens",
+          "label": "Allergene",
+          "position": 40
+        }
+      },
+      "ehs_nutrient_energy": {
+        "label": "Energie",
+        "value": "830 kJ / 197 kcal",
+        "values": [
+          "830 kJ / 197 kcal"
+        ],
+        "valueCode": "830 kJ / 197 kcal",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_fat": {
+        "label": "Fett",
+        "value": "8.6 g",
+        "values": [
+          "8.6 g"
+        ],
+        "valueCode": "8.6 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_fatty_acids_saturated": {
+        "label": "... davon gesättigte Fettsäuren",
+        "value": "1.1 g",
+        "values": [
+          "1.1 g"
+        ],
+        "valueCode": "1.1 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_carbohydrates": {
+        "label": "Kohlenhydrate",
+        "value": "17.3 g",
+        "values": [
+          "17.3 g"
+        ],
+        "valueCode": "17.3 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_sugar": {
+        "label": "... davon Zucker",
+        "value": "1.7 g",
+        "values": [
+          "1.7 g"
+        ],
+        "valueCode": "1.7 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_fiber": {
+        "label": "Ballaststoffe",
+        "value": "0.0 g",
+        "values": [
+          "0.0 g"
+        ],
+        "valueCode": "0.0 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_protein": {
+        "label": "Eiweiss",
+        "value": "11.8 g",
+        "values": [
+          "11.8 g"
+        ],
+        "valueCode": "11.8 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_salt": {
+        "label": "Salz",
+        "value": "0.9 g",
+        "values": [
+          "0.9 g"
+        ],
+        "valueCode": "0.9 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_sodium": {
+        "label": "Natrium",
+        "value": "0.4 g",
+        "values": [
+          "0.4 g"
+        ],
+        "valueCode": "0.4 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_per": {
+        "label": "ehs_nutrient_per",
+        "value": "100 g",
+        "values": [
+          "100 g"
+        ],
+        "valueCode": "100 g",
+        "display": "none",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "base_unit_gtin": {
+        "label": "base_unit_gtin",
+        "value": "7612067009747",
+        "values": [
+          "7612067009747"
+        ],
+        "valueCode": "7612067009747",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      },
+      "pk_name_fr": {
+        "label": "pk_name_fr",
+        "value": "MSC Bâtonnet de poisson FAO67 SG",
+        "values": [
+          "MSC Bâtonnet de poisson FAO67 SG"
+        ],
+        "valueCode": "MSC Bâtonnet de poisson FAO67 SG",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      },
+      "gtin_CT": {
+        "label": "gtin_CT",
+        "value": "7612067530944",
+        "values": [
+          "7612067530944"
+        ],
+        "valueCode": "7612067530944",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      },
+      "gtin_CS": {
+        "label": "gtin_CS",
+        "value": "7612067530944",
+        "values": [
+          "7612067530944"
+        ],
+        "valueCode": "7612067530944",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      },
+      "pk_name_en": {
+        "label": "pk_name_en",
+        "value": "MSC Fish sticks FAO67 FZ",
+        "values": [
+          "MSC Fish sticks FAO67 FZ"
+        ],
+        "valueCode": "MSC Fish sticks FAO67 FZ",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      },
+      "gtin_PCE": {
+        "label": "gtin_PCE",
+        "value": "7612067009747",
+        "values": [
+          "7612067009747"
+        ],
+        "valueCode": "7612067009747",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      },
+      "pk_name_de": {
+        "label": "pk_name_de",
+        "value": "MSC Fischstäbchen FAO67 TK",
+        "values": [
+          "MSC Fischstäbchen FAO67 TK"
+        ],
+        "valueCode": "MSC Fischstäbchen FAO67 TK",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      },
+      "gtin_KGM": {
+        "label": "gtin_KGM",
+        "value": "7612067009747",
+        "values": [
+          "7612067009747"
+        ],
+        "valueCode": "7612067009747",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      },
+      "pk_name_it": {
+        "label": "pk_name_it",
+        "value": "MSC Bastoncini di pesce FAO67 SG",
+        "values": [
+          "MSC Bastoncini di pesce FAO67 SG"
+        ],
+        "valueCode": "MSC Bastoncini di pesce FAO67 SG",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      }
+    }
+  }
+}

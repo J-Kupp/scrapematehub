@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import re
 from html import unescape
+from decimal import Decimal
+import json
+from urllib.parse import urljoin
 from typing import Any
 from models import NormalizedProduct
 
@@ -54,33 +57,42 @@ def _selected_unit(master: dict[str, Any]) -> dict[str, Any]:
     return next((unit for unit in units if normalize_space(unit.get("unitCode")) == base_code), units[0] if units else {})
 
 
-def _packaging(unit: dict[str, Any]) -> tuple[str, str, str, str]:
+def _packaging(master: dict[str, Any], unit: dict[str, Any]) -> tuple[str, str, str, str, str]:
+    """Use the selected sale unit, resolving count bundles through the published inner unit."""
     bundle = unit.get("bundleUnit") or {}
-    if isinstance(bundle, dict) and normalize_space(bundle.get("quantity")):
-        amount = normalize_space(bundle.get("quantity"))
-        source_unit = normalize_space(bundle.get("unit")).lower()
-    else:
-        source_unit = normalize_space(unit.get("unit")).lower()
-        amount = normalize_space(unit.get("netWeightKg") or unit.get("grossWeightKg"))
-        if source_unit in {"kg", "kilogram", "kilograms"} and amount:
-            return amount, "kg", "", ""
-        if source_unit in {"g", "gram", "grams"} and amount:
-            return amount, "g", "", ""
-        if source_unit in {"l", "liter", "litre"} and amount:
-            return amount, "l", "", ""
-        if source_unit in {"ml", "milliliter", "millilitre"} and amount:
-            return amount, "ml", "", ""
-        return ("1", "quantity", "", "") if source_unit else ("", "", "", "")
+    code = normalize_space(bundle.get("unitCode"))
+    quantity = normalize_space(bundle.get("quantity"))
+    measures = {"KGM": "kg", "GRM": "g", "LTR": "l", "MLT": "ml", "CLT": "cl", "DLT": "dl"}
+    if code in measures and quantity:
+        return quantity, measures[code], "", "", ""
+    if code == "PCE" and quantity:
+        inner = next((u for u in master.get("units") or [] if u.get("unitCode") == code), {})
+        weight = normalize_space(inner.get("netWeightKg"))
+        if weight and Decimal(weight) > 0 and Decimal(quantity) == Decimal(quantity).to_integral_value():
+            return weight, "kg", quantity, {"CT": "CT", "MP": "PK", "SCH": "PU", "301": "BG"}.get(unit.get("unitCode"), "PK"), code
+        return quantity, "quantity", "", "", ""
+    if unit.get("unitCode") in measures:
+        return "1", measures[unit["unitCode"]], "", "", ""
+    weight = normalize_space(unit.get("netWeightKg"))
+    if weight and Decimal(weight) > 0:
+        return weight, "kg", "", "", ""
+    return "1", "quantity", "", "", ""
 
-    unit_aliases = {
-        "kilogram": "kg", "kilograms": "kg", "gram": "g", "grams": "g",
-        "liter": "l", "litre": "l", "milliliter": "ml", "millilitre": "ml",
-        "stück": "quantity", "stuck": "quantity", "piece": "quantity", "pieces": "quantity",
-    }
-    vessel_unit = unit_aliases.get(source_unit, source_unit)
-    if vessel_unit not in {"kg", "g", "l", "dl", "cl", "ml", "quantity"}:
-        return "1", "quantity", "", ""
-    return amount, vessel_unit, "", ""
+
+def _nutrition(master: dict[str, Any]) -> str:
+    values = []
+    for key, attr in (master.get("attributes") or {}).items():
+        if key.startswith("ehs_nutrient_") and key != "ehs_nutrient_per" and attr.get("value"):
+            values.append(f"{normalize_space(attr.get('label') or key)}: {_html_text(attr['value'])}")
+    per = _attribute(master, "ehs_nutrient_per")
+    return "; ".join(([f"pro {per}"] if per else []) + values) if values else ""
+
+
+def _sheet(master: dict[str, Any], base_url: str) -> str:
+    for asset in master.get("assets") or []:
+        if "fact_sheet" in str(asset.get("set", "")) or "datenblatt" in str(asset.get("title", "")).lower():
+            return urljoin(base_url, asset.get("source") or "")
+    return ""
 
 
 def _image_url(master: dict[str, Any]) -> str:
@@ -115,7 +127,7 @@ def parse_product_record(
 
     canonical = product_url(base_url, item_number)
     unit = _selected_unit(master)
-    vessel_size, vessel_unit, _, _ = _packaging(unit)
+    vessel_size, vessel_unit, bundle_size, bundle_type, inner_code = _packaging(master, unit)
     attributes = master.get("attributes") or {}
     labels = attributes.get("labels") or {}
     label_values = (labels.get("values") or []) if isinstance(labels, dict) else []
@@ -126,6 +138,10 @@ def parse_product_record(
     if isinstance(raw_price, dict):
         raw_price = raw_price.get("amount") or raw_price.get("value") or ""
 
+    nutrition = _nutrition(master)
+    sheet = _sheet(master, base_url)
+    certifications = [normalize_space(value) for value in label_values if normalize_space(value)]
+    diet = [value for value in certifications if value.casefold() in {"vegan", "vegetarisch", "glutenfrei", "laktosefrei"}]
     specs = {
         "base_ordering_unit": normalize_space(master.get("baseOrderingUnit")),
         "unit_label": normalize_space(unit.get("unit")),
@@ -134,7 +150,38 @@ def parse_product_record(
         "delivery_group": normalize_space(master.get("deliveryGroup")),
         "availability": normalize_space((master.get("availability") or {}).get("available")),
     }
+    specs.update({
+        "sale_units": json.dumps(master.get("units") or [], ensure_ascii=False),
+        "certifications": ", ".join(certifications),
+        "origin": _attribute(master, "fishing_zone"),
+    })
     specs = {key: value for key, value in specs.items() if value}
+    description_parts = [_html_text(payload.get("description") or payload.get("shortDescription") or _attribute(master, "description"))]
+    # The current sync API maps Description but not every optional CSV detail field.
+    # Keep these details readable in the synced catalog as well as the dedicated export fields.
+    for label, value in [
+        ("Ernährungsmerkmale", ", ".join(diet)),
+        ("Spurenhinweis", _attribute(master, "may_contain_allergenes")),
+        ("Transport", _attribute(master, "merat_transport_distribution_center")),
+        ("Saison", _attribute(master, "merat_seasons")),
+        ("Produktionsland", _attribute(master, "country_of_origin")),
+        ("Zertifizierungen", ", ".join(certifications)),
+        ("Herkunft", _attribute(master, "fishing_zone")),
+        ("Nährwerte", nutrition), ("Produktdatenblatt", sheet),
+        ("Französisch", _attribute(master, "pk_name_fr")),
+        ("Italienisch", _attribute(master, "pk_name_it")),
+        ("Englisch", _attribute(master, "pk_name_en")),
+    ]:
+        if value:
+            description_parts.append(f"{label}: {value}")
+    for key, attr in attributes.items():
+        group = (attr.get("group") or {}).get("name", "")
+        if group in {"origin", "general", "storage"} and attr.get("display") == "product" and attr.get("value"):
+            if key not in {"country_of_origin", "fishing_zone", "ehs_storage_advice", "storage_advice_s1"}:
+                description_parts.append(f"{normalize_space(attr.get('label') or key)}: {_html_text(attr['value'])}")
+    gtin = _attribute(master, f"gtin_{inner_code}", "base_unit_gtin") if inner_code else _attribute(master, "selling_unit_1_gtin", "gtin")
+    bundle_gtin = _attribute(master, "selling_unit_1_gtin") if bundle_size else ""
+    inner_unit = next((u for u in master.get("units") or [] if u.get("unitCode") == inner_code), unit) if inner_code else unit
 
     return NormalizedProduct(
         product_url=canonical,
@@ -143,23 +190,33 @@ def parse_product_record(
         product_name=name,
         item_name=name,
         sku=item_number,
-        gtin=_attribute(master, "selling_unit_1_gtin", "gtin"),
+        gtin=gtin,
+        bundle_gtin=bundle_gtin,
+        name_fr=_attribute(master, "pk_name_fr"),
+        name_it=_attribute(master, "pk_name_it"),
+        name_en=_attribute(master, "pk_name_en"),
         price=normalize_space(raw_price),
         currency="CHF",
         status="ACTIVE" if normalize_space(payload.get("status")).lower() in {"", "active"} else "INACTIVE",
         image_url=_image_url(master),
-        description=_html_text(payload.get("description") or payload.get("shortDescription")),
+        description="\n".join(value for value in description_parts if value),
+        product_sheet_url=sheet,
+        nutritional_values=nutrition,
         ingredients=_html_text(_attribute(master, "ehs_ingredients", "ingredients")),
         allergens=_attribute(master, "contains_allergenes", "allergens"),
         storage_advice=_attribute(master, "ehs_storage_advice", "storage_advice_s1"),
         manufacturer=normalize_space(master.get("manufacturer")),
-        country=_attribute(master, "country_of_origin", "country_of_manufacture"),
-        labels=[normalize_space(value) for value in label_values if normalize_space(value)],
-        dietary_labels=", ".join(normalize_space(value) for value in label_values if normalize_space(value)),
+        country=normalize_space((attributes.get("country_of_origin") or {}).get("valueCode")) or _attribute(master, "country_of_origin", "country_of_manufacture"),
+        labels=["BIO"] if any("bio" == value.casefold() for value in certifications) else [],
+        dietary_labels=", ".join(diet),
         vessel_size=vessel_size,
         vessel_unit=vessel_unit,
-        net_weight=normalize_space(unit.get("netWeightKg")),
-        total_weight=normalize_space(unit.get("grossWeightKg")),
+        bundle_size=bundle_size,
+        bundle_type=bundle_type,
+        min_order_count=normalize_space(unit.get("minimumQuantity")) or "1",
+        packaging_mode="structured_supplier_units",
+        net_weight=normalize_space(inner_unit.get("netWeightKg")),
+        total_weight=normalize_space(inner_unit.get("grossWeightKg")),
         raw_bundle_text=normalize_space(unit.get("unit")),
         packaging_evidence=normalize_space(unit.get("unit")),
         packaging_source="merat_catalog_api",
