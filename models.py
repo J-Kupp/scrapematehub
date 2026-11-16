@@ -66,6 +66,9 @@ class NormalizedProduct:
     sku: str = ""
     variant_name: str = ""
     variant_options: dict[str, str] = field(default_factory=dict)
+    alcohol_content: str = ""
+    vintage: str = ""
+    grape_variety: str = ""
     name_fr: str = ""
     name_it: str = ""
     name_en: str = ""
