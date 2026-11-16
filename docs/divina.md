@@ -60,3 +60,13 @@ specification is the available source for manual follow-up.
 The default supplier configuration is disabled, with a disabled schedule, keep_existing policy,
 and token variable YBM_TOKEN_DIVINA. Deployment adds the supplier while preserving existing
 runtime settings. Configure a supplier-specific token before any first YourBarMate sync.
+
+## Full local verification, 2026-11-16
+
+A complete live scrape fetched all 856 products from 14 listing pages without fetch or parse
+failures and produced 856 distinct supplier references and import IDs. The initial import
+validation exposed one packaging error: SKU 540325, `6 x 1'000gr`, lost the Swiss thousands
+separator context and was parsed as zero grams. Normalize ASCII and typographic Swiss thousands
+separators before interpreting quantities. A regression fixture verifies six units of 1000 g.
+After the fix, replaying all 856 fetched records through packaging, export, cleaning, validation,
+and local API-payload mapping produced no validation errors or warnings. No sync was performed.

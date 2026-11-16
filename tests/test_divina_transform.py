@@ -80,6 +80,17 @@ class DivinaTransformTests(unittest.TestCase):
         self.assertEqual(rows[0]['Vessel unit'], 'kg')
         self.assertEqual(rows[0]['Bundle size'], '6')
 
+    def test_swiss_thousands_separator_preserves_six_1000g_jars(self):
+        product = parse_product_record((ROOT / 'thousands.html').read_text(), BASE + '/artischocken/10008318-carciofi.html')
+        interpret_products([product], {record_key(product):product.sku}, [record_key(product)])
+        rows, _ = clean_rows(build_csv_rows([product], 'divina'), structured_item_ids={product.sku})
+        self.assertEqual(rows[0]['Vessel size'], '1000')
+        self.assertEqual(rows[0]['Vessel unit'], 'g')
+        self.assertEqual(rows[0]['Bundle size'], '6')
+        self.assertEqual(rows[0]['Bundle type'], 'CT')
+        from adapters.divina.transform import packaging_from_title
+        self.assertEqual(packaging_from_title("6 x 1’000gr", "Karton")['vessel_size'], '1000')
+
     def test_robots_allow_catalog_but_block_specification_download(self):
         robots = 'User-agent: *\nDisallow: /*controller=attachment\nDisallow: /*?order=\n'
         self.assertTrue(robots_allows(robots, BASE + '/2-alle-produkte?page=2'))

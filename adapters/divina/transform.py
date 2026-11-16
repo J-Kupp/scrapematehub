@@ -56,6 +56,8 @@ def _html_text(value) -> str:
 
 def packaging_from_title(name: str, sale_unit: str) -> dict[str, str]:
     """Preserve explicit supplier quantities, including cups containing mini pieces."""
+    # Swiss thousands separators are part of the quantity, not a new measure.
+    name = re.sub(r"(?<=\d)['’](?=\d{3}(?:\D|$))", '', name)
     measure = r'(?P<size>\d+(?:[.,]\d+)?)\s*(?P<unit>kg|g|gr|ml|cl|dl|l)\b'
     multiple = re.search(r'(?P<count>\d+)\s*[x×]\s*(?:ca\.?\s*)?' + measure, name, re.I)
     match = multiple or re.search(measure, name, re.I)
