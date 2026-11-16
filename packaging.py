@@ -421,6 +421,14 @@ def build_decision(
 
 
 def interpret_packaging(product: NormalizedProduct) -> PackagingDecision:
+    if product.packaging_mode == "structured_supplier_units":
+        return build_decision(
+            product, vessel_size=product.vessel_size, vessel_unit=product.vessel_unit,
+            vessel_type=product.vessel_type, bundle_size=product.bundle_size,
+            bundle_type=product.bundle_type, price=product.price,
+            mode="structured_supplier_units", evidence=product.packaging_evidence,
+            source=product.packaging_source,
+        )
     sources = collect_packaging_sources(product)
     piece_match, piece_source, piece_text = first_matching_text(NESTED_COUNT_RE, sources)
     named_nested_match, named_nested_source, named_nested_text = first_matching_text(NESTED_NAMED_RE, sources)

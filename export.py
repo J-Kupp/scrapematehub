@@ -46,6 +46,10 @@ def record_to_csv_row(record: NormalizedProduct, item_id: str) -> dict[str, str]
     row["Minimum order count"] = record.min_order_count or "1"
     row["Status"] = record.status
     row["Image"] = record.image_url
+    row["Name FR"] = record.name_fr
+    row["Name IT"] = record.name_it
+    row["Name EN"] = record.name_en
+    row["Fishing method"] = record.fishing_method
     row["GTIN"] = record.gtin
     row["Labels"] = ",".join(record.labels)
     row["Description"] = record.description

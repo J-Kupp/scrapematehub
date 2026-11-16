@@ -462,7 +462,7 @@ def maybe_parse_bundle_count(text: str) -> tuple[str, str]:
     return count, bundle_type
 
 
-def clean_rows(rows: list[dict[str, str]]) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
+def clean_rows(rows: list[dict[str, str]], *, structured_item_ids: set[str] | None = None) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
     cleaned_rows = [deepcopy(row) for row in rows]
     corrections: list[dict[str, str]] = []
 
@@ -574,9 +574,10 @@ def clean_rows(rows: list[dict[str, str]]) -> tuple[list[dict[str, str]], list[d
             row[field] = after
             record_change(corrections, row_number=index, item_id_before=original_item_id, item_id_after=final_item_id, field=field, value_before=before, value_after=after, reason="normalize_numeric_field")
 
-        multipack_bundle_size, multipack_vessel_size, multipack_unit = maybe_parse_multipack(item_text)
-        bundle_count_from_text, bundle_type_from_text = maybe_parse_bundle_count(item_text)
-        single_size_from_text, single_unit_from_text = maybe_parse_single_size(item_text)
+        inference_text = "" if original_item_id in (structured_item_ids or set()) else item_text
+        multipack_bundle_size, multipack_vessel_size, multipack_unit = maybe_parse_multipack(inference_text)
+        bundle_count_from_text, bundle_type_from_text = maybe_parse_bundle_count(inference_text)
+        single_size_from_text, single_unit_from_text = maybe_parse_single_size(inference_text)
 
         if multipack_bundle_size and multipack_vessel_size and multipack_unit == "quantity":
             multipack_bundle_size = multiply_numeric_strings(multipack_bundle_size, multipack_vessel_size)

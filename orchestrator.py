@@ -207,7 +207,11 @@ def export_scrape_artifacts(
     export_raw_jsonl(products, paths["raw_jsonl"])
     export_failures_jsonl(failures, paths["failures_jsonl"])
     raw_rows = build_csv_rows(products, supplier_slug)
-    rows, correction_rows = clean_rows(raw_rows)
+    structured_item_ids = {
+        item_ids[record_key(product)] for product in products
+        if product.packaging_mode == "structured_supplier_units"
+    }
+    rows, correction_rows = clean_rows(raw_rows, structured_item_ids=structured_item_ids)
     write_csv_rows(rows, paths["csv"])
     write_correction_report(correction_rows, paths["correction_report"])
     write_packaging_audit(audit_rows, paths["packaging_audit"])

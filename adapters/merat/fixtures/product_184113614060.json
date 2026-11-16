@@ -1,0 +1,510 @@
+{
+  "itemNumber": "184113614060",
+  "name": "Swiss Gourmet Beef Carpaccio 14x60g TK",
+  "description": null,
+  "shortDescription": null,
+  "status": "active",
+  "categories": [
+    {
+      "code": "pim_merat_marketing_grilling_season",
+      "name": "Grillsaison",
+      "slug": "grillsaison",
+      "level": 2,
+      "productPosition": -705433865,
+      "categoryPosition": 1
+    },
+    {
+      "code": "pim_merat_marketing_tatar_and_carpaccio",
+      "name": "Tatar & Carpaccio",
+      "slug": "tatar-carpaccio",
+      "level": 2,
+      "productPosition": -705433865,
+      "categoryPosition": 8
+    },
+    {
+      "code": "pim_merat_marketing_beef",
+      "name": "Rind",
+      "slug": "rind",
+      "level": 1,
+      "productPosition": -705433865,
+      "categoryPosition": 1
+    },
+    {
+      "code": "pim_merat_marketing_seasonal",
+      "name": "Saisonal",
+      "slug": "saisonal",
+      "level": 1,
+      "productPosition": -705433865,
+      "categoryPosition": 4
+    },
+    {
+      "code": "pim_merat_marketing_cooked",
+      "name": "Küchenfertig",
+      "slug": "kuchenfertig",
+      "level": 1,
+      "productPosition": -705433865,
+      "categoryPosition": 10
+    },
+    {
+      "code": "pim_merat_marketing_meat",
+      "name": "Fleisch",
+      "slug": "fleisch",
+      "level": 0,
+      "productPosition": -705433865,
+      "categoryPosition": 0
+    },
+    {
+      "code": "pim_merat_marketing_our_highlights",
+      "name": "Unsere Highlights",
+      "slug": "unsere-highlights",
+      "level": 0,
+      "productPosition": -705433865,
+      "categoryPosition": 7
+    }
+  ],
+  "master": {
+    "sku": "184113614060",
+    "name": "Swiss Gourmet Beef Carpaccio 14x60g TK",
+    "baseOrderingUnit": "CT",
+    "baseUnit": "PCE",
+    "units": [
+      {
+        "unit": "Stück",
+        "unitCode": "PCE",
+        "minimumQuantity": "1",
+        "quantityIncrement": null,
+        "grossWeightKg": "0.06",
+        "netWeightKg": "0.06",
+        "netDrainedWeightKg": null,
+        "bundleUnit": null,
+        "price": null
+      },
+      {
+        "unit": "Karton",
+        "unitCode": "CT",
+        "minimumQuantity": "1",
+        "quantityIncrement": null,
+        "grossWeightKg": "0.84",
+        "netWeightKg": "0.84",
+        "netDrainedWeightKg": null,
+        "bundleUnit": {
+          "unit": "Stück",
+          "unitCode": "PCE",
+          "quantity": "14"
+        },
+        "price": null
+      }
+    ],
+    "price": null,
+    "assets": [
+      {
+        "name": "3036899f0b471b93cdff074b90cacd17116fd1dc_184113614060.jpg",
+        "source": "https://shop.merat-tipesca.ch/files/akeneo-assets/3/0/3/6/3036899f0b471b93cdff074b90cacd17116fd1dc_184113614060.jpg",
+        "title": "Hauptbild (Mérat)",
+        "caption": null,
+        "set": "merat_image_main",
+        "size": null
+      },
+      {
+        "name": "184113614060_Swiss Gourmet Beef Carpaccio 14x60g TK_DE.pdf",
+        "source": "https://shop.merat-tipesca.ch/documents/01K488RFTQ19PJR4Y6VCSS46EV",
+        "title": "Produktdatenblatt",
+        "caption": null,
+        "set": "product_fact_sheet_merat",
+        "size": null
+      }
+    ],
+    "images": [
+      {
+        "name": "3f4bd41d38ac45fcdd08e4911544bd8a9403ad6c.jpg",
+        "title": null,
+        "caption": null,
+        "set": "merat_image_main",
+        "sources": [
+          {
+            "size": "full",
+            "url": "https://swissgastrosolutions.rokka.io/full/3f4bd41d38ac45fcdd08e4911544bd8a9403ad6c.jpg"
+          },
+          {
+            "size": "large",
+            "url": "https://swissgastrosolutions.rokka.io/large/3f4bd41d38ac45fcdd08e4911544bd8a9403ad6c.jpg"
+          },
+          {
+            "size": "medium",
+            "url": "https://swissgastrosolutions.rokka.io/medium/3f4bd41d38ac45fcdd08e4911544bd8a9403ad6c.jpg"
+          },
+          {
+            "size": "small",
+            "url": "https://swissgastrosolutions.rokka.io/small/3f4bd41d38ac45fcdd08e4911544bd8a9403ad6c.jpg"
+          }
+        ]
+      }
+    ],
+    "attributes": {
+      "selling_unit_1_gtin": {
+        "label": "GTIN",
+        "value": "7612067540561",
+        "values": [
+          "7612067540561"
+        ],
+        "valueCode": "7612067540561",
+        "display": "product",
+        "group": {
+          "name": "codes",
+          "label": "Codes",
+          "position": 5
+        }
+      },
+      "country_of_origin": {
+        "label": "Produktionsland",
+        "value": "Schweiz",
+        "values": [
+          "Schweiz"
+        ],
+        "valueCode": "CH",
+        "display": "product",
+        "group": {
+          "name": "origin",
+          "label": "Herkunft / Produktion",
+          "position": 10
+        }
+      },
+      "fishing_zone": {
+        "label": "Herkunft",
+        "value": "Schweiz",
+        "values": [
+          "Schweiz"
+        ],
+        "valueCode": "CH",
+        "display": "product",
+        "group": {
+          "name": "origin",
+          "label": "Herkunft / Produktion",
+          "position": 10
+        }
+      },
+      "storage_advice_s1": {
+        "label": "Lagerung",
+        "value": "< -18 Grad",
+        "values": [
+          "< -18 Grad"
+        ],
+        "valueCode": "06",
+        "display": "product",
+        "group": {
+          "name": "storage",
+          "label": "Lagerung / Haltbarkeit",
+          "position": 15
+        }
+      },
+      "ehs_storage_advice": {
+        "label": "Lagerhinweis",
+        "value": " Tiefgekühlt: Nur im Tiefkühlabteil bei mind. -18 °C lagerfähig. Einmal aufgetaut, nicht wieder einfrieren und sofort konsumieren.",
+        "values": [
+          " Tiefgekühlt: Nur im Tiefkühlabteil bei mind. -18 °C lagerfähig. Einmal aufgetaut, nicht wieder einfrieren und sofort konsumieren."
+        ],
+        "valueCode": null,
+        "display": "product",
+        "group": {
+          "name": "storage",
+          "label": "Lagerung / Haltbarkeit",
+          "position": 15
+        }
+      },
+      "ehs_ingredients": {
+        "label": "Zutaten",
+        "value": " Rindfleisch (Schweiz).",
+        "values": [
+          " Rindfleisch (Schweiz)."
+        ],
+        "valueCode": null,
+        "display": "product",
+        "group": {
+          "name": "ingredients",
+          "label": "Zutaten",
+          "position": 20
+        }
+      },
+      "labels": {
+        "label": "Zertifizierung",
+        "value": "Schweizer Fleisch",
+        "values": [
+          "Schweizer Fleisch"
+        ],
+        "valueCode": "ch_meat",
+        "display": "product",
+        "group": {
+          "name": "labels",
+          "label": "Zertifizierung",
+          "position": 30
+        }
+      },
+      "contains_allergenes": {
+        "label": "Allergene",
+        "value": "keine",
+        "values": [
+          "keine"
+        ],
+        "valueCode": "none",
+        "display": "product",
+        "group": {
+          "name": "allergens",
+          "label": "Allergene",
+          "position": 40
+        }
+      },
+      "ehs_nutrient_energy": {
+        "label": "Energie",
+        "value": "451 kJ / 107 kcal",
+        "values": [
+          "451 kJ / 107 kcal"
+        ],
+        "valueCode": "451 kJ / 107 kcal",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_fat": {
+        "label": "Fett",
+        "value": "2.0 g",
+        "values": [
+          "2.0 g"
+        ],
+        "valueCode": "2.0 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_fatty_acids_saturated": {
+        "label": "... davon gesättigte Fettsäuren",
+        "value": "0.8 g",
+        "values": [
+          "0.8 g"
+        ],
+        "valueCode": "0.8 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_carbohydrates": {
+        "label": "Kohlenhydrate",
+        "value": "< 0.1 g",
+        "values": [
+          "< 0.1 g"
+        ],
+        "valueCode": "< 0.1 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_sugar": {
+        "label": "... davon Zucker",
+        "value": "< 0.1 g",
+        "values": [
+          "< 0.1 g"
+        ],
+        "valueCode": "< 0.1 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_fiber": {
+        "label": "Ballaststoffe",
+        "value": "< 0.1 g",
+        "values": [
+          "< 0.1 g"
+        ],
+        "valueCode": "< 0.1 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_protein": {
+        "label": "Eiweiss",
+        "value": "22.0 g",
+        "values": [
+          "22.0 g"
+        ],
+        "valueCode": "22.0 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_salt": {
+        "label": "Salz",
+        "value": "0.0 g",
+        "values": [
+          "0.0 g"
+        ],
+        "valueCode": "0.0 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_sodium": {
+        "label": "Natrium",
+        "value": "0.0 g",
+        "values": [
+          "0.0 g"
+        ],
+        "valueCode": "0.0 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_per": {
+        "label": "ehs_nutrient_per",
+        "value": "100 g",
+        "values": [
+          "100 g"
+        ],
+        "valueCode": "100 g",
+        "display": "none",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "base_unit_gtin": {
+        "label": "base_unit_gtin",
+        "value": "7612067019364",
+        "values": [
+          "7612067019364"
+        ],
+        "valueCode": "7612067019364",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      },
+      "pk_name_fr": {
+        "label": "pk_name_fr",
+        "value": "SGB B-Carpaccio 14x60g SG",
+        "values": [
+          "SGB B-Carpaccio 14x60g SG"
+        ],
+        "valueCode": "SGB B-Carpaccio 14x60g SG",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      },
+      "gtin_CT": {
+        "label": "gtin_CT",
+        "value": "7612067540561",
+        "values": [
+          "7612067540561"
+        ],
+        "valueCode": "7612067540561",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      },
+      "gtin_CS": {
+        "label": "gtin_CS",
+        "value": "7612067540561",
+        "values": [
+          "7612067540561"
+        ],
+        "valueCode": "7612067540561",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      },
+      "pk_name_en": {
+        "label": "pk_name_en",
+        "value": "Swiss Gourmet B-Carpaccio 14x60g FZ",
+        "values": [
+          "Swiss Gourmet B-Carpaccio 14x60g FZ"
+        ],
+        "valueCode": "Swiss Gourmet B-Carpaccio 14x60g FZ",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      },
+      "gtin_PCE": {
+        "label": "gtin_PCE",
+        "value": "7612067019364",
+        "values": [
+          "7612067019364"
+        ],
+        "valueCode": "7612067019364",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      },
+      "pk_name_de": {
+        "label": "pk_name_de",
+        "value": "SGB R-Carpaccio 14x60g TK",
+        "values": [
+          "SGB R-Carpaccio 14x60g TK"
+        ],
+        "valueCode": "SGB R-Carpaccio 14x60g TK",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      },
+      "pk_name_it": {
+        "label": "pk_name_it",
+        "value": "SGB Mnz-Carpaccio 14x60g SG",
+        "values": [
+          "SGB Mnz-Carpaccio 14x60g SG"
+        ],
+        "valueCode": "SGB Mnz-Carpaccio 14x60g SG",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      }
+    }
+  }
+}

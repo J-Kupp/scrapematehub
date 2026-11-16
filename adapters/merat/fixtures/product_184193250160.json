@@ -1,0 +1,466 @@
+{
+  "itemNumber": "184193250160",
+  "name": "Croissant francais 60x70g TK",
+  "description": null,
+  "shortDescription": null,
+  "status": "active",
+  "categories": [
+    {
+      "code": "pim_merat_marketing_breakfast",
+      "name": "Frühstück",
+      "slug": "fruhstuck",
+      "level": 1,
+      "productPosition": 241206204,
+      "categoryPosition": 6
+    },
+    {
+      "code": "pim_merat_marketing_supplements",
+      "name": "Beilagen",
+      "slug": "beilagen",
+      "level": 0,
+      "productPosition": 241206204,
+      "categoryPosition": 4
+    },
+    {
+      "code": "pim_merat_marketing_complementary_range",
+      "name": "Ergänzendes Sortiment",
+      "slug": "erganzendes-sortiment",
+      "level": 0,
+      "productPosition": 241206204,
+      "categoryPosition": 5
+    }
+  ],
+  "master": {
+    "sku": "184193250160",
+    "name": "Croissant francais 60x70g TK",
+    "baseOrderingUnit": "CT",
+    "baseUnit": "CT",
+    "units": [
+      {
+        "unit": "Karton",
+        "unitCode": "CT",
+        "minimumQuantity": "1",
+        "quantityIncrement": null,
+        "grossWeightKg": "4.2",
+        "netWeightKg": "4.2",
+        "netDrainedWeightKg": null,
+        "bundleUnit": null,
+        "price": null
+      }
+    ],
+    "price": null,
+    "assets": [
+      {
+        "name": "f8999b041d817c6615f542574cb22759bc2769ec_184193250160.jpg",
+        "source": "https://shop.merat-tipesca.ch/files/akeneo-assets/f/8/9/9/f8999b041d817c6615f542574cb22759bc2769ec_184193250160.jpg",
+        "title": "Hauptbild (Mérat)",
+        "caption": null,
+        "set": "merat_image_main",
+        "size": null
+      },
+      {
+        "name": "184193250160_Croissant francais 60x70g TK_DE.pdf",
+        "source": "https://shop.merat-tipesca.ch/documents/01K48KBB6DW34DKAK97ZZ2EQHW",
+        "title": "Produktdatenblatt",
+        "caption": null,
+        "set": "product_fact_sheet_merat",
+        "size": null
+      }
+    ],
+    "images": [
+      {
+        "name": "6d0869d942b6ed1ad9c2672d59b5e0bea05d1516.jpg",
+        "title": null,
+        "caption": null,
+        "set": "merat_image_main",
+        "sources": [
+          {
+            "size": "full",
+            "url": "https://swissgastrosolutions.rokka.io/full/6d0869d942b6ed1ad9c2672d59b5e0bea05d1516.jpg"
+          },
+          {
+            "size": "large",
+            "url": "https://swissgastrosolutions.rokka.io/large/6d0869d942b6ed1ad9c2672d59b5e0bea05d1516.jpg"
+          },
+          {
+            "size": "medium",
+            "url": "https://swissgastrosolutions.rokka.io/medium/6d0869d942b6ed1ad9c2672d59b5e0bea05d1516.jpg"
+          },
+          {
+            "size": "small",
+            "url": "https://swissgastrosolutions.rokka.io/small/6d0869d942b6ed1ad9c2672d59b5e0bea05d1516.jpg"
+          }
+        ]
+      }
+    ],
+    "attributes": {
+      "selling_unit_1_gtin": {
+        "label": "GTIN",
+        "value": "7612067587573",
+        "values": [
+          "7612067587573"
+        ],
+        "valueCode": "7612067587573",
+        "display": "product",
+        "group": {
+          "name": "codes",
+          "label": "Codes",
+          "position": 5
+        }
+      },
+      "country_of_origin": {
+        "label": "Produktionsland",
+        "value": "Schweiz",
+        "values": [
+          "Schweiz"
+        ],
+        "valueCode": "CH",
+        "display": "product",
+        "group": {
+          "name": "origin",
+          "label": "Herkunft / Produktion",
+          "position": 10
+        }
+      },
+      "fishing_zone": {
+        "label": "Herkunft",
+        "value": "Frankreich",
+        "values": [
+          "Frankreich"
+        ],
+        "valueCode": "FR",
+        "display": "product",
+        "group": {
+          "name": "origin",
+          "label": "Herkunft / Produktion",
+          "position": 10
+        }
+      },
+      "storage_advice_s1": {
+        "label": "Lagerung",
+        "value": "< -18 Grad",
+        "values": [
+          "< -18 Grad"
+        ],
+        "valueCode": "06",
+        "display": "product",
+        "group": {
+          "name": "storage",
+          "label": "Lagerung / Haltbarkeit",
+          "position": 15
+        }
+      },
+      "ehs_storage_advice": {
+        "label": "Lagerhinweis",
+        "value": " Tiefgekühlt: Nur im Tiefkühlabteil bei mind. -18 °C lagerfähig. Einmal aufgetaut, nicht wieder einfrieren und sofort konsumieren.",
+        "values": [
+          " Tiefgekühlt: Nur im Tiefkühlabteil bei mind. -18 °C lagerfähig. Einmal aufgetaut, nicht wieder einfrieren und sofort konsumieren."
+        ],
+        "valueCode": null,
+        "display": "product",
+        "group": {
+          "name": "storage",
+          "label": "Lagerung / Haltbarkeit",
+          "position": 15
+        }
+      },
+      "ehs_ingredients": {
+        "label": "Zutaten",
+        "value": " <b>Weizen</b>mehl, <b>Butter</b> 21%, Wasser, Zucker, Hefe, <b>Weizen </b>gluten, <b>Vollei </b>(aus Freilandhaltung), Kochsalz, Enzyme (Xylanasen), Mehlbehandlungsmittel: Ascorbinsäure. Kann enthalten: Dinkel, Khorasan_Weizen, Roggen, Gerste, Hafer, Soja, Mandeln, Haselnüsse, Walnüsse, Pekannüsse.",
+        "values": [
+          " <b>Weizen</b>mehl, <b>Butter</b> 21%, Wasser, Zucker, Hefe, <b>Weizen </b>gluten, <b>Vollei </b>(aus Freilandhaltung), Kochsalz, Enzyme (Xylanasen), Mehlbehandlungsmittel: Ascorbinsäure. Kann enthalten: Dinkel, Khorasan_Weizen, Roggen, Gerste, Hafer, Soja, Mandeln, Haselnüsse, Walnüsse, Pekannüsse."
+        ],
+        "valueCode": null,
+        "display": "product",
+        "group": {
+          "name": "ingredients",
+          "label": "Zutaten",
+          "position": 20
+        }
+      },
+      "contains_allergenes": {
+        "label": "Allergene",
+        "value": "Eier, Glutenhaltige Getreide, Milch",
+        "values": [
+          "Eier",
+          "Glutenhaltige Getreide",
+          "Milch"
+        ],
+        "valueCode": "egg, gluten, milk",
+        "display": "product",
+        "group": {
+          "name": "allergens",
+          "label": "Allergene",
+          "position": 40
+        }
+      },
+      "may_contain_allergenes": {
+        "label": "Möglicherweise enthaltene Allergene",
+        "value": "Sojabohnen, Hartschalenobst",
+        "values": [
+          "Sojabohnen",
+          "Hartschalenobst"
+        ],
+        "valueCode": "soy, tree_nuts",
+        "display": "product",
+        "group": {
+          "name": "allergens",
+          "label": "Allergene",
+          "position": 40
+        }
+      },
+      "ehs_nutrient_energy": {
+        "label": "Energie",
+        "value": "1417 kJ / 339 kcal",
+        "values": [
+          "1417 kJ / 339 kcal"
+        ],
+        "valueCode": "1417 kJ / 339 kcal",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_fat": {
+        "label": "Fett",
+        "value": "20.0 g",
+        "values": [
+          "20.0 g"
+        ],
+        "valueCode": "20.0 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_fatty_acids_saturated": {
+        "label": "... davon gesättigte Fettsäuren",
+        "value": "13.0 g",
+        "values": [
+          "13.0 g"
+        ],
+        "valueCode": "13.0 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_carbohydrates": {
+        "label": "Kohlenhydrate",
+        "value": "40.0 g",
+        "values": [
+          "40.0 g"
+        ],
+        "valueCode": "40.0 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_sugar": {
+        "label": "... davon Zucker",
+        "value": "5.8 g",
+        "values": [
+          "5.8 g"
+        ],
+        "valueCode": "5.8 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_fiber": {
+        "label": "Ballaststoffe",
+        "value": "2.5 g",
+        "values": [
+          "2.5 g"
+        ],
+        "valueCode": "2.5 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_protein": {
+        "label": "Eiweiss",
+        "value": "8.9 g",
+        "values": [
+          "8.9 g"
+        ],
+        "valueCode": "8.9 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_salt": {
+        "label": "Salz",
+        "value": "0.7 g",
+        "values": [
+          "0.7 g"
+        ],
+        "valueCode": "0.7 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_sodium": {
+        "label": "Natrium",
+        "value": "0.3 g",
+        "values": [
+          "0.3 g"
+        ],
+        "valueCode": "0.3 g",
+        "display": "product",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "ehs_nutrient_per": {
+        "label": "ehs_nutrient_per",
+        "value": "100 g",
+        "values": [
+          "100 g"
+        ],
+        "valueCode": "100 g",
+        "display": "none",
+        "group": {
+          "name": "nutrients",
+          "label": "Nährwerte pro 100g",
+          "position": 100
+        }
+      },
+      "base_unit_gtin": {
+        "label": "base_unit_gtin",
+        "value": "7612067061776",
+        "values": [
+          "7612067061776"
+        ],
+        "valueCode": "7612067061776",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      },
+      "pk_name_fr": {
+        "label": "pk_name_fr",
+        "value": "Croissant francais 60x70g SG",
+        "values": [
+          "Croissant francais 60x70g SG"
+        ],
+        "valueCode": "Croissant francais 60x70g SG",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      },
+      "gtin_CT": {
+        "label": "gtin_CT",
+        "value": "7612067587573",
+        "values": [
+          "7612067587573"
+        ],
+        "valueCode": "7612067587573",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      },
+      "gtin_CS": {
+        "label": "gtin_CS",
+        "value": "7612067587573",
+        "values": [
+          "7612067587573"
+        ],
+        "valueCode": "7612067587573",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      },
+      "pk_name_en": {
+        "label": "pk_name_en",
+        "value": "Croissant french 60x70g FZ",
+        "values": [
+          "Croissant french 60x70g FZ"
+        ],
+        "valueCode": "Croissant french 60x70g FZ",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      },
+      "gtin_PCE": {
+        "label": "gtin_PCE",
+        "value": "7612067061776",
+        "values": [
+          "7612067061776"
+        ],
+        "valueCode": "7612067061776",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      },
+      "pk_name_de": {
+        "label": "pk_name_de",
+        "value": "Croissant francais 60x70g TK",
+        "values": [
+          "Croissant francais 60x70g TK"
+        ],
+        "valueCode": "Croissant francais 60x70g TK",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      },
+      "pk_name_it": {
+        "label": "pk_name_it",
+        "value": "Croissant francese 60x70g SG",
+        "values": [
+          "Croissant francese 60x70g SG"
+        ],
+        "valueCode": "Croissant francese 60x70g SG",
+        "display": "none",
+        "group": {
+          "name": "default",
+          "label": "Default",
+          "position": null
+        }
+      }
+    }
+  }
+}
