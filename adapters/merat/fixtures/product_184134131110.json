@@ -1,0 +1,139 @@
+{
+  "itemNumber": "184134131110",
+  "name": "Schwein Nierstück lang ca3.2kg",
+  "description": null,
+  "shortDescription": null,
+  "status": "active",
+  "categories": [
+    {
+      "name": "Schwein",
+      "level": 1
+    },
+    {
+      "name": "Fleisch",
+      "level": 0
+    }
+  ],
+  "master": {
+    "sku": "184134131110",
+    "name": "Schwein Nierstück lang ca3.2kg",
+    "baseOrderingUnit": "PCE",
+    "baseUnit": "KGM",
+    "units": [
+      {
+        "unit": "kg",
+        "unitCode": "KGM",
+        "minimumQuantity": "1",
+        "quantityIncrement": null,
+        "grossWeightKg": "1",
+        "netWeightKg": "1",
+        "netDrainedWeightKg": null,
+        "bundleUnit": null,
+        "price": null
+      },
+      {
+        "unit": "Stück",
+        "unitCode": "PCE",
+        "minimumQuantity": "1",
+        "quantityIncrement": null,
+        "grossWeightKg": "3.2",
+        "netWeightKg": "3.2",
+        "netDrainedWeightKg": null,
+        "bundleUnit": {
+          "unit": "kg",
+          "unitCode": "KGM",
+          "quantity": "3.2"
+        },
+        "price": null
+      }
+    ],
+    "price": null,
+    "images": [
+      {
+        "sources": [
+          {
+            "size": "full",
+            "url": "https://swissgastrosolutions.rokka.io/full/f2712fee97554e52bc3e722f183f0914f47dc625.jpg"
+          },
+          {
+            "size": "large",
+            "url": "https://swissgastrosolutions.rokka.io/large/f2712fee97554e52bc3e722f183f0914f47dc625.jpg"
+          }
+        ]
+      }
+    ],
+    "attributes": {
+      "selling_unit_1_gtin": {
+        "label": "GTIN",
+        "value": "7617100584656",
+        "values": [
+          "7617100584656"
+        ]
+      },
+      "country_of_origin": {
+        "label": "Produktionsland",
+        "value": "Schweiz",
+        "values": [
+          "Schweiz"
+        ]
+      },
+      "fishing_zone": {
+        "label": "Herkunft",
+        "value": "Schweiz",
+        "values": [
+          "Schweiz"
+        ]
+      },
+      "storage_advice_s1": {
+        "label": "Lagerung",
+        "value": "< 5 Grad",
+        "values": [
+          "< 5 Grad"
+        ]
+      },
+      "ehs_storage_advice": {
+        "label": "Lagerhinweis",
+        "value": " Gekühlt aufbewahren! Max. + 5°C",
+        "values": [
+          " Gekühlt aufbewahren! Max. + 5°C"
+        ]
+      },
+      "ehs_ingredients": {
+        "label": "Zutaten",
+        "value": " Schweinefleisch (Schweiz).",
+        "values": [
+          " Schweinefleisch (Schweiz)."
+        ]
+      },
+      "labels": {
+        "label": "Zertifizierung",
+        "value": "Schweizer Fleisch, Suisse Garantie",
+        "values": [
+          "Schweizer Fleisch",
+          "Suisse Garantie"
+        ]
+      },
+      "contains_allergenes": {
+        "label": "Allergene",
+        "value": "keine",
+        "values": [
+          "keine"
+        ]
+      },
+      "ehs_nutrient_energy": {
+        "label": "Energie",
+        "value": "559 kJ / 133 kcal",
+        "values": [
+          "559 kJ / 133 kcal"
+        ]
+      },
+      "ehs_nutrient_fat": {
+        "label": "Fett",
+        "value": "5.0 g",
+        "values": [
+          "5.0 g"
+        ]
+      }
+    }
+  }
+}

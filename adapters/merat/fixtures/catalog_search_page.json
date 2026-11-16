@@ -1,0 +1,24 @@
+{
+  "totalElements": 2143,
+  "totalPages": 22,
+  "size": 100,
+  "number": 0,
+  "content": [
+    {
+      "id": "184134131110",
+      "itemNumber": "184134131110",
+      "category": "Schwein",
+      "title": "Schwein Nierstück lang ca3.2kg",
+      "description": null,
+      "image": "https://swissgastrosolutions.rokka.io/small/f2712fee97554e52bc3e722f183f0914f47dc625.jpg"
+    },
+    {
+      "id": "184103046700",
+      "itemNumber": "184103046700",
+      "category": "Schinken & Speck",
+      "title": "Bratspeck o/Schw o/Knor geräucht gesch 400g",
+      "description": null,
+      "image": "https://swissgastrosolutions.rokka.io/small/798cf21c6add9607b070251e3ef674def1666c75.jpg"
+    }
+  ]
+}

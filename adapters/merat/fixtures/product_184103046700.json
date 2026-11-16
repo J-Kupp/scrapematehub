@@ -1,0 +1,146 @@
+{
+  "itemNumber": "184103046700",
+  "name": "Bratspeck o/Schw o/Knor geräucht gesch 400g",
+  "description": null,
+  "shortDescription": null,
+  "status": "active",
+  "categories": [
+    {
+      "name": "Schinken & Speck",
+      "level": 2
+    },
+    {
+      "name": "Schwein",
+      "level": 1
+    },
+    {
+      "name": "Charcuterie & Wurstwaren",
+      "level": 1
+    },
+    {
+      "name": "Fleisch",
+      "level": 0
+    }
+  ],
+  "master": {
+    "sku": "184103046700",
+    "name": "Bratspeck o/Schw o/Knor geräucht gesch 400g",
+    "baseOrderingUnit": "SCH",
+    "baseUnit": "KGM",
+    "units": [
+      {
+        "unit": "kg",
+        "unitCode": "KGM",
+        "minimumQuantity": "1",
+        "quantityIncrement": null,
+        "grossWeightKg": "1",
+        "netWeightKg": "1",
+        "netDrainedWeightKg": null,
+        "bundleUnit": null,
+        "price": null
+      },
+      {
+        "unit": "Schale",
+        "unitCode": "SCH",
+        "minimumQuantity": "1",
+        "quantityIncrement": null,
+        "grossWeightKg": "0.4",
+        "netWeightKg": "0.4",
+        "netDrainedWeightKg": null,
+        "bundleUnit": {
+          "unit": "kg",
+          "unitCode": "KGM",
+          "quantity": "0.4"
+        },
+        "price": null
+      }
+    ],
+    "price": null,
+    "images": [
+      {
+        "sources": [
+          {
+            "size": "full",
+            "url": "https://swissgastrosolutions.rokka.io/full/798cf21c6add9607b070251e3ef674def1666c75.jpg"
+          },
+          {
+            "size": "large",
+            "url": "https://swissgastrosolutions.rokka.io/large/798cf21c6add9607b070251e3ef674def1666c75.jpg"
+          }
+        ]
+      }
+    ],
+    "attributes": {
+      "selling_unit_1_gtin": {
+        "label": "GTIN",
+        "value": "7617100579874",
+        "values": [
+          "7617100579874"
+        ]
+      },
+      "country_of_origin": {
+        "label": "Produktionsland",
+        "value": "Schweiz",
+        "values": [
+          "Schweiz"
+        ]
+      },
+      "fishing_zone": {
+        "label": "Herkunft",
+        "value": "Schweiz",
+        "values": [
+          "Schweiz"
+        ]
+      },
+      "storage_advice_s1": {
+        "label": "Lagerung",
+        "value": "< 5 Grad",
+        "values": [
+          "< 5 Grad"
+        ]
+      },
+      "ehs_storage_advice": {
+        "label": "Lagerhinweis",
+        "value": " Gekühlt aufbewahren! Max. + 5°C",
+        "values": [
+          " Gekühlt aufbewahren! Max. + 5°C"
+        ]
+      },
+      "ehs_ingredients": {
+        "label": "Zutaten",
+        "value": " Schweinefleisch (Schweiz), Nitritpökelsalz (jodiertes Kochsalz, Konservierungsstoff: Natriumnitrit), Glucose, Glucosesirup, Antioxidationsmittel: Natriumascorbat, Natriumcitrat.",
+        "values": [
+          " Schweinefleisch (Schweiz), Nitritpökelsalz (jodiertes Kochsalz, Konservierungsstoff: Natriumnitrit), Glucose, Glucosesirup, Antioxidationsmittel: Natriumascorbat, Natriumcitrat."
+        ]
+      },
+      "labels": {
+        "label": "Zertifizierung",
+        "value": "Schweizer Fleisch",
+        "values": [
+          "Schweizer Fleisch"
+        ]
+      },
+      "contains_allergenes": {
+        "label": "Allergene",
+        "value": "keine",
+        "values": [
+          "keine"
+        ]
+      },
+      "ehs_nutrient_energy": {
+        "label": "Energie",
+        "value": "1482 kJ / 358 kcal",
+        "values": [
+          "1482 kJ / 358 kcal"
+        ]
+      },
+      "ehs_nutrient_fat": {
+        "label": "Fett",
+        "value": "32.0 g",
+        "values": [
+          "32.0 g"
+        ]
+      }
+    }
+  }
+}

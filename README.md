@@ -19,7 +19,7 @@ or dashboard configuration.
 
 ## Current Platform
 
-- Registered adapters: `fideco`, `gourmador`, `laenggasstee`, `swissbox`, `terravigna`, and `walker`.
+- Registered adapters: `fideco`, `gourmador`, `laenggasstee`, `merat`, `swissbox`, `terravigna`, and `walker`.
 - Shared code lives in `core/`, `models.py`, `orchestrator.py`, validation/export modules, and `ybm.py`.
 - Supplier-specific code lives only in `adapters/<supplier_slug>/`.
 - Each production scraper job uses ECS/Fargate on demand. The EC2 instance hosts the dashboard,
