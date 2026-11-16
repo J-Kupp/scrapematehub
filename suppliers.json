@@ -162,6 +162,25 @@
         "max_pages": 0,
         "max_products": 0
       }
+    },
+    {
+      "supplier_slug": "divina",
+      "enabled": false,
+      "scraper_adapter": "divina",
+      "base_url": "https://shop.divinafood.ch",
+      "ybm_token_env_var": "YBM_TOKEN_DIVINA",
+      "output_dir": "output/divina",
+      "catalog_update_policy": "keep_existing",
+      "schedule": {
+        "frequency": "disabled"
+      },
+      "scrape_settings": {
+        "concurrency": 3,
+        "min_delay_seconds": 0.2,
+        "max_delay_seconds": 0.5,
+        "max_pages": 0,
+        "max_products": 0
+      }
     }
   ]
 }
