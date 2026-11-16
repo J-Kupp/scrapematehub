@@ -3,7 +3,7 @@ from __future__ import annotations
 import csv
 import re
 from copy import deepcopy
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP, ROUND_CEILING
 from pathlib import Path
 
 from export import write_csv_rows
@@ -573,6 +573,19 @@ def clean_rows(rows: list[dict[str, str]], *, structured_item_ids: set[str] | No
             after = parse_numeric_field(before)
             row[field] = after
             record_change(corrections, row_number=index, item_id_before=original_item_id, item_id_after=final_item_id, field=field, value_before=before, value_after=after, reason="normalize_numeric_field")
+
+        before_minimum = row["Minimum order count"]
+        if before_minimum:
+            try:
+                minimum = Decimal(before_minimum)
+                if minimum.is_finite() and minimum > 0:
+                    row["Minimum order count"] = str(max(1, int(minimum.to_integral_value(rounding=ROUND_CEILING))))
+            except InvalidOperation:
+                pass  # Validation reports malformed values instead of silently guessing.
+            record_change(corrections, row_number=index, item_id_before=original_item_id,
+                          item_id_after=final_item_id, field="Minimum order count",
+                          value_before=before_minimum, value_after=row["Minimum order count"],
+                          reason="normalize_minimum_order_count_to_api_integer")
 
         inference_text = "" if original_item_id in (structured_item_ids or set()) else item_text
         multipack_bundle_size, multipack_vessel_size, multipack_unit = maybe_parse_multipack(inference_text)
