@@ -21,7 +21,7 @@ from .auth import authenticate_user, change_password, ensure_bootstrap_users
 from .config import WebAppConfig, load_webapp_config
 from .db import connect, init_db
 from .ecs_jobs import count_ecs_stream_matches, read_ecs_task_logs
-from .jobs import JobRunner, build_job_command, get_job, list_jobs, queue_job, tail_file
+from .jobs import JobRunner, build_job_command, get_job, list_jobs, queue_job, tail_file, extract_worker_run_summary
 from .service import (
     build_supplier_from_form,
     parse_bool_form,
@@ -91,7 +91,7 @@ def count_local_log_matches(log_path: str | None, pattern: re.Pattern[str]) -> i
 PARSED_PRODUCT_RE = re.compile(r"\bParsed product\b")
 ERROR_LINE_RE = re.compile(r"\b(ERROR|CRITICAL|Traceback|Exception|FAILED)\b", re.IGNORECASE)
 PROGRESS_MARKER_RE = re.compile(r"\bPROGRESS\s+(?P<fields>.+)$")
-PROGRESS_FIELD_RE = re.compile(r"\b(?P<key>phase|found|processed|scraped|total|pages)=(?P<value>[^\s]+)")
+PROGRESS_FIELD_RE = re.compile(r"\b(?P<key>phase|found|processed|scraped|uploaded|created|updated|failed|total|pages)=(?P<value>[^\s]+)")
 
 
 def parse_live_progress(log_text: str) -> dict[str, int | str]:
@@ -102,6 +102,10 @@ def parse_live_progress(log_text: str) -> dict[str, int | str]:
         "processed_count": 0,
         "scraped_count": 0,
         "total_count": 0,
+        "uploaded_count": 0,
+        "created_count": 0,
+        "updated_count": 0,
+        "failed_count": 0,
     }
     for line in log_text.splitlines():
         marker = PROGRESS_MARKER_RE.search(line)
@@ -117,6 +121,8 @@ def parse_live_progress(log_text: str) -> dict[str, int | str]:
                 progress["processed_count"] = int(value)
             elif key == "scraped":
                 progress["scraped_count"] = int(value)
+            elif key in {"uploaded", "created", "updated", "failed"}:
+                progress[f"{key}_count"] = int(value)
             elif key == "total":
                 progress["total_count"] = int(value)
     return progress
@@ -131,7 +137,7 @@ def summarize_job_logs(log_text: str) -> str:
     error_lines: list[str] = []
     seen: set[str] = set()
     for line in lines:
-        if not ERROR_LINE_RE.search(line):
+        if "RESULT_RUN_SUMMARY" in line or not ERROR_LINE_RE.search(line):
             continue
         if line in seen:
             continue
@@ -152,6 +158,17 @@ def build_job_progress(
 ) -> dict[str, Any]:
     log_group, log_stream, log_tail = load_job_logs(job, app_config)
     live_progress = parse_live_progress(log_tail)
+    summary = extract_worker_run_summary(log_tail)
+    if not summary and not (job.get("backend") == "ecs_fargate" and job.get("remote_job_id")) and job.get("run_summary_path"):
+        summary = read_json_file(Path(job["run_summary_path"]))
+    if summary:
+        sync = summary.get("sync_summary") or summary.get("stages", {}).get("sync", {})
+        live_progress.update({"found_count": summary.get("discovered_product_url_count", 0),
+                              "scraped_count": summary.get("product_count", 0),
+                              "phase": "completed" if job.get("status") == "succeeded" else "finished"})
+        for field in ("created", "updated", "failed"):
+            live_progress[f"{field}_count"] = int(sync.get(f"{field}_products", 0))
+        live_progress["uploaded_count"] = 0 if summary.get("dry_run") else int(sync.get("created_products", 0)) + int(sync.get("updated_products", 0))
     scraped_count = int(live_progress["scraped_count"])
     if not scraped_count and job.get("backend") == "ecs_fargate" and job.get("remote_job_id"):
         try:
@@ -169,14 +186,26 @@ def build_job_progress(
     error_lines = []
     seen: set[str] = set()
     for line in log_tail.splitlines():
-        if not ERROR_LINE_RE.search(line):
+        if "RESULT_RUN_SUMMARY" in line or not ERROR_LINE_RE.search(line):
             continue
         if line in seen:
             continue
         seen.add(line)
         error_lines.append(line)
 
+    if summary:
+        sync = summary.get("sync_summary") or summary.get("stages", {}).get("sync", {})
+        error_lines.extend(summary.get("validation", {}).get("errors", []))
+        error_lines.extend(sync.get("errors", []))
+        if sync.get("error"):
+            error_lines.append(sync["error"])
+
     return {
+        "run_summary": summary,
+        "uploaded_count": live_progress["uploaded_count"],
+        "created_count": live_progress["created_count"],
+        "updated_count": live_progress["updated_count"],
+        "failed_count": live_progress["failed_count"],
         "scraped_count": scraped_count,
         "found_count": live_progress["found_count"],
         "processed_count": live_progress["processed_count"],
@@ -639,7 +668,7 @@ def create_app(config_path: Path | None = None) -> FastAPI:
             job["cloudwatch_log_group"] = progress["log_group"]
         if progress["log_stream"]:
             job["cloudwatch_log_stream"] = progress["log_stream"]
-        run_summary = read_json_file(Path(job["run_summary_path"])) if job.get("run_summary_path") else {}
+        run_summary = progress["run_summary"]
         sync_report = read_json_file(Path(job["sync_report_path"])) if job.get("sync_report_path") else {}
         return templates.TemplateResponse(
             request,
@@ -647,6 +676,7 @@ def create_app(config_path: Path | None = None) -> FastAPI:
             template_context(
                 request,
                 job=job,
+                uploaded_count=progress["uploaded_count"],
                 scraped_count=progress["scraped_count"],
                 found_count=progress["found_count"],
                 processed_count=progress["processed_count"],
@@ -804,6 +834,11 @@ def create_app(config_path: Path | None = None) -> FastAPI:
             "finished_at": job.get("finished_at"),
             "exit_code": job.get("exit_code"),
             "remote_status": job.get("remote_status"),
+            "has_run_summary": bool(progress["run_summary"]),
+            "uploaded_count": progress["uploaded_count"],
+            "created_count": progress["created_count"],
+            "updated_count": progress["updated_count"],
+            "failed_count": progress["failed_count"],
             "scraped_count": progress["scraped_count"],
             "found_count": progress["found_count"],
             "processed_count": progress["processed_count"],

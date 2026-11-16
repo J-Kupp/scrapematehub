@@ -104,19 +104,26 @@ def read_ecs_task_logs(
         return resolved_group, resolved_stream, ""
 
     client = _logs_client(config.region)
+    # CloudWatch returns a page, not the whole stream. Walk all pages and keep
+    # only the requested tail so long jobs include their final result marker.
+    from collections import deque
+    tail = deque(maxlen=limit)
+    token = None
     try:
-        response = client.get_log_events(
-            logGroupName=resolved_group,
-            logStreamName=resolved_stream,
-            # Completed Fargate streams can return an empty tail on the first
-            # backwards query. Reading from the head is reliable and keeps the
-            # dashboard progress contract identical for running and finished jobs.
-            startFromHead=True,
-            limit=limit,
-        )
+        while True:
+            kwargs = {"logGroupName": resolved_group, "logStreamName": resolved_stream,
+                      "startFromHead": True, "limit": 10000}
+            if token:
+                kwargs["nextToken"] = token
+            response = client.get_log_events(**kwargs)
+            tail.extend(response.get("events", []))
+            next_token = response.get("nextForwardToken")
+            if not next_token or next_token == token:
+                break
+            token = next_token
     except client.exceptions.ResourceNotFoundException:
         return resolved_group, resolved_stream, ""
-    events = response.get("events", [])
+    events = list(tail)
     lines: list[str] = []
     for event in events:
         timestamp_ms = event.get("timestamp")

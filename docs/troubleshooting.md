@@ -117,3 +117,18 @@ counts and article-specific errors. It ends with a failed job status so the erro
 visible and the last successful state is not advanced. Missing-product inactivation is
 skipped for partial results, scrape failures, or limited syncs. Retrying reuses existing
 product IDs rather than blindly creating duplicates.
+
+## Upload Metrics Stay At Zero After A Successful Fargate Run
+
+CloudWatch streams are paginated. Read through the forward pages and retain the requested
+tail, including `RESULT_RUN_SUMMARY`. The first 500 events of a long run do not contain the
+final summary. Job pages use the summary belonging to their task, not another run's supplier
+artifact. Supplier overview pages recover and cache the latest completed task's own summary
+when old control-plane artifacts are absent or stale.
+
+Structured JSON result markers are not free-text error lines. Read their actual error arrays;
+keys such as `failed_products: 0` must not trigger a false error indicator.
+
+Upload metrics include successful creates plus updates. They are polled during syncing and
+once after completion; stage details refresh when the final result becomes available.
+Dry runs always display zero actual uploads even when their diff predicts creates/updates.

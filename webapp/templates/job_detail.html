@@ -67,7 +67,7 @@
     </div>
     <div class="summary-grid" style="grid-template-columns:repeat(2,minmax(0,1fr)); margin-top:14px;">
       <div class="panel-flat">
-        <div class="metric-value" id="uploaded-count">{{ sync_stage.get('uploaded_products', 0) or 0 }}</div>
+        <div class="metric-value" id="uploaded-count">{{ uploaded_count or 0 }}</div>
         <div class="metric-label">Items uploaded</div>
       </div>
       <div class="panel-flat">
@@ -139,7 +139,7 @@
       <div class="stat-label">Sync</div>
       <div class="stat-value">
         {% if sync_stage.get('performed') %}
-        {{ sync_stage.get('uploaded_products', 0) }}
+        {{ 0 if run_summary.get('dry_run') else sync_stage.get('uploaded_products', 0) }}
         {% else %}
         Not run
         {% endif %}
@@ -246,7 +246,7 @@ async function poll() {
   if (document.getElementById('finished-at')) {
     document.getElementById('finished-at').textContent = job.finished_at || 'n/a';
   }
-  if (job.status === 'running' || job.status === 'queued') {
+  { // Fetch metrics even after the worker has finished.
     const logResponse = await fetch('/api/jobs/{{ job.id }}/logs');
     const progress = await logResponse.json();
     if (document.getElementById('job-status') && progress.status) {
@@ -264,6 +264,7 @@ async function poll() {
     if (document.getElementById('finished-at')) {
       document.getElementById('finished-at').textContent = progress.finished_at || job.finished_at || 'n/a';
     }
+    document.getElementById('uploaded-count').textContent = progress.uploaded_count ?? 0;
     if (document.getElementById('scraped-count')) {
       document.getElementById('scraped-count').textContent = progress.scraped_count ?? 0;
     }
@@ -292,8 +293,14 @@ async function poll() {
     if (document.getElementById('cloudwatch-log-stream') && progress.cloudwatch_log_stream) {
       document.getElementById('cloudwatch-log-stream').textContent = progress.cloudwatch_log_stream;
     }
-    setTimeout(poll, 3000);
-  } else if (job.status === 'succeeded' || job.status === 'failed') {
+    const initialStatus = {{ job.status | tojson }};
+    const initialHasSummary = {{ (run_summary | length > 0) | tojson }};
+    const terminal = ['succeeded', 'failed', 'stopped'].includes(job.status);
+    if (terminal && progress.has_run_summary && (!initialHasSummary || ['running', 'queued'].includes(initialStatus))) {
+      window.location.reload();
+      return;
+    }
+    if (terminal && progress.has_run_summary) return;
     setTimeout(poll, 3000);
   }
 }
