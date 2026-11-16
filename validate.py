@@ -58,7 +58,18 @@ def validate_rows(
     if duplicates:
         errors.append(f"Duplicate Item IDs found: {', '.join(sorted(duplicates)[:20])}")
 
+    row_errors: dict[str, list[str]] = {}
     for row in rows:
+        before_errors = len(errors)
+        minimum = row["Minimum order count"]
+        if minimum:
+            try:
+                number = Decimal(minimum)
+                valid_minimum = number.is_finite() and number >= 1 and number == number.to_integral_value()
+            except InvalidOperation:
+                valid_minimum = False
+            if not valid_minimum:
+                errors.append(f"Invalid Minimum order count for {row['Item ID']}: {minimum}; expected integer >= 1")
         if row["Order by"] not in ALLOWED_ORDER_BY:
             errors.append(f"Invalid Order by value for {row['Item ID']}: {row['Order by']}")
         if row["Vessel unit"] not in ALLOWED_VESSEL_UNITS:
@@ -75,8 +86,12 @@ def validate_rows(
         if row["Price"] and any(symbol in row["Price"] for symbol in "CHF€$"):
             errors.append(f"Currency symbol found in Price for {row['Item ID']}: {row['Price']}")
 
+        if len(errors) > before_errors:
+            row_errors.setdefault(row["Item ID"], []).extend(errors[before_errors:])
+
     if products is not None:
         for product, row in zip(products, rows):
+            before_errors = len(errors)
             mode = product.packaging_mode
             if mode == "suspected_contaminated_bundle":
                 errors.append(
@@ -92,6 +107,9 @@ def validate_rows(
                 errors.append(f"Bundle-priced single-unit export unresolved for {row['Item ID']}")
             if mode == "flatten_piece_pack" and row["Bundle size"]:
                 errors.append(f"Flattened piece-pack still has a bundle for {row['Item ID']}")
+
+            if len(errors) > before_errors:
+                row_errors.setdefault(row["Item ID"], []).extend(errors[before_errors:])
 
     exported_urls = {row["Image"] for row in rows if row["Image"]}
     covered_product_urls = covered_product_url_count if covered_product_url_count is not None else len(rows) + len(failures)
@@ -109,5 +127,6 @@ def validate_rows(
         warnings=warnings,
         performed=True,
         row_count=len(rows),
-        passed_row_count=len(rows) if not errors else 0,
+        row_errors=row_errors,
+        passed_row_count=(len(rows) - len(row_errors)) if len(errors) == sum(map(len, row_errors.values())) else 0,
     )

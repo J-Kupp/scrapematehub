@@ -619,6 +619,15 @@ def require_token(config: SupplierConfig) -> str:
     return token
 
 
+def record_product_failure(summary: SyncSummary, exc: YbmApiError, payload: dict[str, Any]) -> None:
+    contextual = with_product_context(exc, payload)
+    if exc.status_code not in {400, 422}:
+        contextual.sync_summary = summary.to_dict()
+        raise contextual from exc
+    summary.failed_products += 1
+    summary.errors.append(str(contextual))
+
+
 def sync_to_ybm(
     config: SupplierConfig,
     products: list[NormalizedProduct],
@@ -666,26 +675,29 @@ def sync_to_ybm(
     for product_id, payload in sorted(local_payloads.items()):
         remote = remote_products_by_id.get(product_id)
         if remote is None:
-            summary.created_products += 1
             if not dry_run:
                 try:
                     client.create_product(payload)
                 except YbmApiError as exc:
-                    raise with_product_context(exc, payload) from exc
+                    record_product_failure(summary, exc, payload)
+                    continue
+            summary.created_products += 1
             continue
         local_comparable = canonicalize_local_payload(payload)
         remote_comparable = canonicalize_remote_product(remote)
         if local_comparable == remote_comparable:
             summary.unchanged_products += 1
             continue
-        summary.updated_products += 1
         if not dry_run:
             try:
                 client.patch_product(product_id, payload)
             except YbmApiError as exc:
-                raise with_product_context(exc, payload) from exc
+                record_product_failure(summary, exc, payload)
+                continue
+        summary.updated_products += 1
 
-    if not skip_inactivate:
+    summary.inactivation_skipped = skip_inactivate or bool(summary.errors) or limit_products is not None
+    if not summary.inactivation_skipped:
         missing_remote_product_ids = owned_remote_product_ids - set(local_payloads)
         for product_id in sorted(missing_remote_product_ids):
             remote = remote_products_by_id[product_id]
@@ -744,24 +756,27 @@ def sync_rows_to_ybm(
     for product_id, payload in sorted(local_payloads.items()):
         remote = remote_products_by_id.get(product_id)
         if remote is None:
-            summary.created_products += 1
             if not dry_run:
                 try:
                     client.create_product(payload)
                 except YbmApiError as exc:
-                    raise with_product_context(exc, payload) from exc
+                    record_product_failure(summary, exc, payload)
+                    continue
+            summary.created_products += 1
             continue
         if canonicalize_local_payload(payload) == canonicalize_remote_product(remote):
             summary.unchanged_products += 1
             continue
-        summary.updated_products += 1
         if not dry_run:
             try:
                 client.patch_product(product_id, payload)
             except YbmApiError as exc:
-                raise with_product_context(exc, payload) from exc
+                record_product_failure(summary, exc, payload)
+                continue
+        summary.updated_products += 1
 
-    if not skip_inactivate:
+    summary.inactivation_skipped = skip_inactivate or bool(summary.errors) or limit_products is not None
+    if not summary.inactivation_skipped:
         missing_remote_product_ids = owned_remote_product_ids - set(local_payloads)
         for product_id in sorted(missing_remote_product_ids):
             remote = remote_products_by_id[product_id]

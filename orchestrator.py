@@ -156,6 +156,10 @@ def build_run_summary(
         "performed": sync_summary is not None,
         "dry_run": dry_run,
         "aborted": bool(sync_summary and sync_summary.get("aborted")),
+        "partial_success": bool(sync_summary and sync_summary.get("partial_success")),
+        "failed_products": int((sync_summary or {}).get("failed_products", 0)),
+        "skipped_invalid_products": int((sync_summary or {}).get("skipped_invalid_products", 0)),
+        "inactivation_skipped": bool(sync_summary and sync_summary.get("inactivation_skipped")),
         "old_catalog_products": int((sync_summary or {}).get("old_catalog_products", 0)),
         "created_products": int((sync_summary or {}).get("created_products", 0)),
         "updated_products": int((sync_summary or {}).get("updated_products", 0)),
@@ -312,24 +316,31 @@ def run_supplier(
 
     if scrape_only:
         sync_summary_payload = None
-    elif run_result.validation.is_valid:
+    elif run_result.validation.is_valid or (
+        run_result.validation.row_errors
+        and len(run_result.validation.errors) == sum(map(len, run_result.validation.row_errors.values()))
+        and run_result.validation.passed_row_count > 0
+    ):
         try:
             sync_summary, remote_categories, remote_products = sync_rows_to_ybm(
                 config,
-                cleaned_rows,
+                [row for row in cleaned_rows if row["Item ID"] not in run_result.validation.row_errors],
                 dry_run=dry_run,
                 limit_products=limit_products,
-                skip_inactivate=effective_skip_inactivate,
+                skip_inactivate=effective_skip_inactivate or bool(run_result.validation.row_errors) or bool(failures),
             )
         except YbmApiError as exc:
-            sync_summary_payload = {"aborted": True, "reason": "ybm_api_error", "error": str(exc)}
+            sync_summary_payload = {**getattr(exc, "sync_summary", {}), "aborted": True, "reason": "ybm_api_error", "error": str(exc)}
             write_json(paths["sync_report"], sync_summary_payload)
             run_summary = build_run_summary(run_result, dry_run=dry_run, sync_summary=sync_summary_payload, mode=mode)
             write_json(paths["run_summary"], run_summary)
             log_run_summary(service_logger, run_summary)
             service_logger.error("Supplier %s sync failed: %s", supplier_slug, exc)
             raise
+        sync_summary.skipped_invalid_products = len(run_result.validation.row_errors)
+        sync_summary.errors.extend(error for errors in run_result.validation.row_errors.values() for error in errors)
         sync_summary_payload = sync_summary.to_dict()
+        sync_summary_payload["partial_success"] = bool(sync_summary.errors)
         write_json(paths["sync_report"], sync_summary_payload)
         write_json(paths["remote_categories_snapshot"], remote_categories)
         write_json(paths["remote_products_snapshot"], remote_products)
@@ -351,6 +362,8 @@ def run_supplier(
     if not scrape_only and run_result.validation.errors:
         service_logger.error("Supplier %s failed validation: %s", supplier_slug, "; ".join(run_result.validation.errors))
         raise RuntimeError(f"Validation failed for {supplier_slug}: {'; '.join(run_result.validation.errors)}")
+    if sync_summary_payload and sync_summary_payload.get("errors"):
+        raise RuntimeError(f"Supplier {supplier_slug} completed with product errors; see sync report")
     service_logger.info("Supplier %s completed. mode=%s dry_run=%s products=%s", supplier_slug, mode, dry_run, len(products))
     return run_result
 

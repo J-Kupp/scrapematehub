@@ -93,3 +93,27 @@ When opening an issue or asking another AI for help, include only non-secret dat
 - relevant log lines with token values removed
 - run-summary stage counts and validation/sync errors
 - release revision and Actions run URL
+
+## Partial Product Sync And Minimum Counts
+
+The API requires `min_order_count` to be an integer >= 1. Supplier minimum quantities
+are not necessarily API-compatible counts. The shared cleaner rounds positive fractional
+counts up to a whole count, with a minimum of 1, and records the original and replacement
+in the correction report. Raw normalized records retain the original supplier minimum.
+This can impose a larger minimum than the supplier advertises because the API count field
+cannot express fractions. Invalid/non-positive/non-finite values are rejected by validation.
+
+Validation assigns article errors to their item IDs. When global catalog checks pass,
+valid rows still sync and invalid rows are excluded and listed in the sync report. Empty
+catalogs, duplicate identity, or broken global schema remain blockers.
+
+During create/update, HTTP 400 and 422 rejections are recorded per product and subsequent
+products continue. Authentication, authorization, exhausted service/network errors, and
+category failures still abort. On product aborts the report preserves completed upload counts.
+Successful counters increase only after successful requests.
+
+A completed pass with article errors is reported as `partial_success` with failed/skipped
+counts and article-specific errors. It ends with a failed job status so the errors remain
+visible and the last successful state is not advanced. Missing-product inactivation is
+skipped for partial results, scrape failures, or limited syncs. Retrying reuses existing
+product IDs rather than blindly creating duplicates.

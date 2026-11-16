@@ -156,6 +156,7 @@ class ValidationResult:
     performed: bool = True
     row_count: int = 0
     passed_row_count: int = 0
+    row_errors: dict[str, list[str]] = field(default_factory=dict)
 
     @property
     def is_valid(self) -> bool:
@@ -199,6 +200,9 @@ class SupplierRunResult:
 class SyncSummary:
     supplier_slug: str
     dry_run: bool
+    failed_products: int = 0
+    skipped_invalid_products: int = 0
+    inactivation_skipped: bool = False
     old_catalog_products: int = 0
     created_categories: int = 0
     updated_categories: int = 0
