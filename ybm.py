@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import re
 import ssl
@@ -619,6 +620,15 @@ def require_token(config: SupplierConfig) -> str:
     return token
 
 
+def log_sync_progress(summary: SyncSummary, total: int) -> None:
+    logging.getLogger("supplier_service").info(
+        "PROGRESS phase=%s uploaded=%s created=%s updated=%s failed=%s total=%s",
+        "dry_run" if summary.dry_run else "syncing",
+        0 if summary.dry_run else summary.created_products + summary.updated_products,
+        summary.created_products, summary.updated_products, summary.failed_products, total,
+    )
+
+
 def record_product_failure(summary: SyncSummary, exc: YbmApiError, payload: dict[str, Any]) -> None:
     contextual = with_product_context(exc, payload)
     if exc.status_code not in {400, 422}:
@@ -672,6 +682,7 @@ def sync_to_ybm(
         local_payloads = dict(sorted(local_payloads.items())[:limit_products])
     local_payloads = remap_payload_categories(local_payloads, category_aliases)
     summary.old_catalog_products = len(set(local_payloads) & set(remote_products_by_id))
+    log_sync_progress(summary, len(local_payloads))
     for product_id, payload in sorted(local_payloads.items()):
         remote = remote_products_by_id.get(product_id)
         if remote is None:
@@ -680,21 +691,26 @@ def sync_to_ybm(
                     client.create_product(payload)
                 except YbmApiError as exc:
                     record_product_failure(summary, exc, payload)
+                    log_sync_progress(summary, len(local_payloads))
                     continue
             summary.created_products += 1
+            log_sync_progress(summary, len(local_payloads))
             continue
         local_comparable = canonicalize_local_payload(payload)
         remote_comparable = canonicalize_remote_product(remote)
         if local_comparable == remote_comparable:
             summary.unchanged_products += 1
+            log_sync_progress(summary, len(local_payloads))
             continue
         if not dry_run:
             try:
                 client.patch_product(product_id, payload)
             except YbmApiError as exc:
                 record_product_failure(summary, exc, payload)
+                log_sync_progress(summary, len(local_payloads))
                 continue
         summary.updated_products += 1
+        log_sync_progress(summary, len(local_payloads))
 
     summary.inactivation_skipped = skip_inactivate or bool(summary.errors) or limit_products is not None
     if not summary.inactivation_skipped:
@@ -753,6 +769,7 @@ def sync_rows_to_ybm(
     local_payloads = remap_payload_categories(local_payloads, category_aliases)
     summary.old_catalog_products = len(set(local_payloads) & set(remote_products_by_id))
 
+    log_sync_progress(summary, len(local_payloads))
     for product_id, payload in sorted(local_payloads.items()):
         remote = remote_products_by_id.get(product_id)
         if remote is None:
@@ -761,19 +778,24 @@ def sync_rows_to_ybm(
                     client.create_product(payload)
                 except YbmApiError as exc:
                     record_product_failure(summary, exc, payload)
+                    log_sync_progress(summary, len(local_payloads))
                     continue
             summary.created_products += 1
+            log_sync_progress(summary, len(local_payloads))
             continue
         if canonicalize_local_payload(payload) == canonicalize_remote_product(remote):
             summary.unchanged_products += 1
+            log_sync_progress(summary, len(local_payloads))
             continue
         if not dry_run:
             try:
                 client.patch_product(product_id, payload)
             except YbmApiError as exc:
                 record_product_failure(summary, exc, payload)
+                log_sync_progress(summary, len(local_payloads))
                 continue
         summary.updated_products += 1
+        log_sync_progress(summary, len(local_payloads))
 
     summary.inactivation_skipped = skip_inactivate or bool(summary.errors) or limit_products is not None
     if not summary.inactivation_skipped:

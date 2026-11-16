@@ -12,7 +12,7 @@ from config import PROJECT_ROOT, get_log_root, get_supplier_config, load_supplie
 from orchestrator import load_state, service_log_path, supplier_paths
 
 from .config import WebAppConfig
-from .jobs import list_jobs, tail_file
+from .jobs import list_jobs, tail_file, persist_ecs_result_artifacts
 
 
 def validate_ybm_token(api_base: str, token: str) -> int:
@@ -198,6 +198,23 @@ def supplier_health_summary(
         run_summary = read_json_file(paths["run_summary"])
         sync_report = read_json_file(paths["sync_report"])
         latest_job = next(iter(list_jobs(conn, supplier_slug=supplier.supplier_slug, limit=1)), None)
+        if latest_job and latest_job.get("backend") == "ecs_fargate" and latest_job.get("remote_job_id") and latest_job.get("status") in {"succeeded", "failed"}:
+            job_paths = dict(paths)
+            job_paths["run_summary"] = paths["output_dir"] / f"job_{latest_job['id']}_run_summary.json"
+            job_paths["sync_report"] = paths["output_dir"] / f"job_{latest_job['id']}_sync_report.json"
+            result = read_json_file(job_paths["run_summary"])
+            if not result:
+                try:
+                    result = persist_ecs_result_artifacts(
+                        app_config.ecs_backend, task_arn=latest_job["remote_job_id"],
+                        log_group=latest_job.get("cloudwatch_log_group") or "",
+                        log_stream=latest_job.get("cloudwatch_log_stream") or "", paths=job_paths,
+                    )
+                except Exception:
+                    result = {}
+            if result:
+                run_summary = result
+                sync_report = result.get("sync_summary") or {}
         scheduler_row = conn.execute(
             "SELECT * FROM scheduler_runs WHERE supplier_slug = ?",
             (supplier.supplier_slug,),
