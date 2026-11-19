@@ -49,6 +49,7 @@ def record_to_csv_row(record: NormalizedProduct, item_id: str) -> dict[str, str]
     row["Alcohol content"] = record.alcohol_content
     row["Vintage"] = record.vintage
     row["Grape variety"] = record.grape_variety
+    row["Wine-making"] = record.wine_making
     row["Name FR"] = record.name_fr
     row["Name IT"] = record.name_it
     row["Name EN"] = record.name_en

@@ -69,6 +69,7 @@ class NormalizedProduct:
     alcohol_content: str = ""
     vintage: str = ""
     grape_variety: str = ""
+    wine_making: str = ""
     name_fr: str = ""
     name_it: str = ""
     name_en: str = ""
