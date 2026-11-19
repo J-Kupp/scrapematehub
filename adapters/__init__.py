@@ -5,6 +5,7 @@ from adapters.base import SupplierAdapter
 
 
 ADAPTER_REGISTRY = {
+    "casadelvino": "adapters.casadelvino:CasaDelVinoAdapter",
     "divina": "adapters.divina:DivinaAdapter",
     "fideco": "adapters.fideco:FidecoAdapter",
     "gourmador": "adapters.gourmador:GourmadorAdapter",

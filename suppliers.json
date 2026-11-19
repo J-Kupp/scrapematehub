@@ -181,6 +181,25 @@
         "max_pages": 0,
         "max_products": 0
       }
+    },
+    {
+      "supplier_slug": "casadelvino",
+      "enabled": false,
+      "scraper_adapter": "casadelvino",
+      "base_url": "https://www.casadelvino.ch",
+      "ybm_token_env_var": "YBM_TOKEN_CASADELVINO",
+      "output_dir": "output/casadelvino",
+      "catalog_update_policy": "keep_existing",
+      "schedule": {
+        "frequency": "disabled"
+      },
+      "scrape_settings": {
+        "concurrency": 4,
+        "min_delay_seconds": 0.25,
+        "max_delay_seconds": 0.55,
+        "max_pages": 0,
+        "max_products": 0
+      }
     }
   ]
 }
